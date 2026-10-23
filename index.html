@@ -200,7 +200,7 @@ function defaults(){
   return {
     v:2, plan:{wake:'07:00',meals:[{id:uid(),n:'Frühstück',t:'08:00'},{id:uid(),n:'Mittagessen',t:'13:00'},{id:uid(),n:'Abendessen',t:'19:00'}]}, goals:{kcal:2600,protein:160,water:8,glass:250,study:240},
     loc:{city:'Siegen',lat:50.875,lng:8.024,method:'mwl',asr:1},
-    days:{}, recent:[], pet:null, apiKey:'',
+    days:{}, recent:[], pet:null, apiKey:'', notif:{on:false,before:0},
     recipes:[{id:uid(),n:'Haferflocken mit Banane',min:10,k:520,p:24,ing:'80 g Haferflocken\n250 ml Milch\n1 Banane\n1 Messlöffel Proteinpulver\n1 TL Honig',steps:'Haferflocken und Milch in einem Topf 3 Minuten köcheln lassen.\nProteinpulver unterrühren.\nBanane in Scheiben schneiden und darauf legen.\nMit Honig süßen.'}],
     gym:{
       0:{name:'Push (Brust, Schulter, Trizeps)',time:'18:00',ex:[{id:uid(),n:'Bankdrücken',s:4,r:8,kg:70},{id:uid(),n:'Schulterdrücken',s:3,r:10,kg:30},{id:uid(),n:'Trizeps-Pushdown',s:3,r:12,kg:25}]},
@@ -434,6 +434,40 @@ function ring(v,max,val,label,sub){
   var r=30,c=2*Math.PI*r,p=Math.min(1,max>0?v/max:0);
   return '<div class="ring"><div class="rw"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="'+r+'" class="rt"/><circle cx="36" cy="36" r="'+r+'" class="rv" stroke-dasharray="'+(c*p).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 36 36)"/></svg>'+ic(RI[label])+'</div><div class="rn"><b>'+val+'</b><span>'+label+'</span><small>'+sub+'</small></div></div>';
 }
+var HAD=[
+['Die Taten werden nur nach den Absichten beurteilt, und jedem steht zu, was er beabsichtigt hat.','Bukhari 1, Muslim 1907'],
+['Keiner von euch glaubt wirklich, bis er für seinen Bruder liebt, was er für sich selbst liebt.','Bukhari 13, Muslim 45'],
+['Wer an Allah und den Jüngsten Tag glaubt, soll Gutes sprechen oder schweigen.','Bukhari 6018, Muslim 47'],
+['Der Muslim ist, vor dessen Zunge und Hand die Muslime sicher sind.','Bukhari 10, Muslim 40'],
+['Dein Lächeln gegenüber deinem Bruder ist eine Sadaqa.','Tirmidhi 1956'],
+['Der Beste unter euch ist, wer den Koran lernt und ihn lehrt.','Bukhari 5027'],
+['Die Reinheit ist die Hälfte des Glaubens.','Muslim 223'],
+['Stark ist nicht, wer andere niederringt. Stark ist, wer sich im Zorn beherrscht.','Bukhari 6114, Muslim 2609'],
+['Erleichtert und macht es nicht schwer. Verkündet frohe Botschaft und schreckt nicht ab.','Bukhari 69, Muslim 1734'],
+['Wer einen Weg beschreitet, um Wissen zu suchen, dem erleichtert Allah dadurch einen Weg zum Paradies.','Muslim 2699'],
+['Allah schaut nicht auf eure Körper und eure Gestalt, sondern auf eure Herzen und eure Taten.','Muslim 2564'],
+['Zwei Gnaden werden von vielen Menschen verkannt: Gesundheit und freie Zeit.','Bukhari 6412'],
+['Sei in dieser Welt wie ein Fremder oder ein Wanderer.','Bukhari 6416'],
+['Wer sich nicht über die Menschen erbarmt, mit dem erbarmt sich Allah nicht.','Bukhari 7376, Muslim 2319'],
+['Seid barmherzig mit denen auf der Erde, dann erbarmt sich der im Himmel über euch.','Abu Dawud 4941, Tirmidhi 1924'],
+['Hütet euch vor Unrecht, denn Unrecht ist Finsternis am Tag der Auferstehung.','Muslim 2578'],
+['Das Beste, was ein Mensch isst, ist das, was er mit seiner eigenen Hand verdient hat.','Bukhari 2072'],
+['Der Gläubige ist für den Gläubigen wie ein Gebäude, dessen Teile sich gegenseitig stützen.','Bukhari 481, Muslim 2585'],
+['Das Gebet in der Gemeinschaft ist 27 Stufen besser als das Gebet allein.','Bukhari 645, Muslim 650'],
+['Allah ist schön und liebt die Schönheit.','Muslim 91'],
+['Wer hat das größte Anrecht auf meine gute Gesellschaft? Deine Mutter, dann deine Mutter, dann deine Mutter, dann dein Vater.','Bukhari 5971, Muslim 2548'],
+['Würdet ihr wirklich auf Allah vertrauen, wie es sich gehört, würde Er euch versorgen, wie Er die Vögel versorgt.','Tirmidhi 2344'],
+['Die Bitte (Dua) ist die Anbetung.','Tirmidhi 3371'],
+['Wahrer Reichtum ist nicht die Menge des Besitzes, sondern der Reichtum der Seele.','Bukhari 6446, Muslim 1051'],
+['Die Taten, die Allah am liebsten sind, sind die beständigen, auch wenn sie gering sind.','Bukhari 6464, Muslim 783'],
+['Lass, was dich zweifeln lässt, für das, was dich nicht zweifeln lässt.','Tirmidhi 2518'],
+['Zur Schönheit des Islams eines Menschen gehört, dass er lässt, was ihn nichts angeht.','Tirmidhi 2317'],
+['Niemand ist um Allahs willen demütig, ohne dass Allah ihn erhöht.','Muslim 2588'],
+['Jede gute Tat ist eine Sadaqa.','Bukhari 6021, Muslim 1005'],
+['Wer zu etwas Gutem anleitet, erhält den gleichen Lohn wie der, der es tut.','Muslim 1893'],
+['Wer einem Gläubigen eine Sorge aus dieser Welt nimmt, dem nimmt Allah eine Sorge am Tag der Auferstehung.','Muslim 2699']
+];
+function hadithOf(k){var p=parse(k),n=Math.floor(Date.UTC(p.getFullYear(),p.getMonth(),p.getDate())/86400000);return HAD[((n%HAD.length)+HAD.length)%HAD.length]}
 function vHeute(){
   var d=day(), g=gymToday(), cl=classesToday(), T=pt(date);
   var done=5;
@@ -453,6 +487,8 @@ function vHeute(){
    +ring(studyNow(d),S.goals.study,fmtM(studyNow(d)),'Lernzeit','Ziel '+fmtM(S.goals.study))
    +ring(d.water,S.goals.water,d.water+'/'+S.goals.water,'Wasser','Gläser')
    +'</div>';
+  var hd=hadithOf(date);
+  h+='<section class="card"><h2>'+ic('mosque')+'Hadis des Tages</h2><p style="margin:0;font-size:19px;line-height:1.4;letter-spacing:-.01em;text-wrap:pretty">„'+esc(hd[0])+'“</p><p class="hint">'+esc(hd[1])+' · sinngemäße Übersetzung</p></section>';
   h+='<section class="card"><h2>'+ic('book')+'Uni <em>'+cl.length+' Termine · '+open+' Aufgaben offen</em></h2>'
    +(cl.length?cl.map(function(c){return '<div class="row"><span class="tm">'+c.a+'</span><div class="t">'+esc(c.n)+'<small>bis '+c.b+(c.room?' · '+esc(c.room):'')+'</small></div></div>'}).join(''):'<div class="empty">Heute keine Veranstaltungen.</div>')+'</section>';
   var ev=[];
@@ -603,6 +639,37 @@ function streak(){
   while(full(ds(c))){n++;c.setDate(c.getDate()-1)}
   return n;
 }
+var nMsg='', fired={};
+function icsText(days){
+  var z=function(n){return String(n).padStart(2,'0')},now=new Date(),stamp=now.getUTCFullYear()+z(now.getUTCMonth()+1)+z(now.getUTCDate())+'T'+z(now.getUTCHours())+z(now.getUTCMinutes())+z(now.getUTCSeconds())+'Z';
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//DayPlan//Gebetszeiten//DE','CALSCALE:GREGORIAN'],b=S.notif.before;
+  for(var i=0;i<days;i++){
+    var d=new Date();d.setDate(d.getDate()+i);var k=ds(d),T=pt(k),dd=k.replace(/-/g,'');
+    PR.forEach(function(p){
+      var m=mins(T[p[0]]),e=m+15;
+      L.push('BEGIN:VEVENT','UID:dayplan-'+k+'-'+p[0]+'@dayplan','DTSTAMP:'+stamp,'DTSTART:'+dd+'T'+T[p[0]].replace(':','')+'00','DTEND:'+dd+'T'+z(Math.floor(e/60)%24)+z(e%60)+'00','SUMMARY:'+p[1]+' Gebet','DESCRIPTION:'+p[1]+' '+T[p[0]]+' Uhr',
+        'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+p[1]+' Gebet','TRIGGER:'+(b?'-PT'+b+'M':'PT0S'),'END:VALARM','END:VEVENT');
+    });
+  }
+  L.push('END:VCALENDAR');return L.join('\r\n');
+}
+function downloadIcs(){
+  var u=URL.createObjectURL(new Blob([icsText(30)],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');
+  a.href=u;a.download='gebetszeiten.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+}
+function notifTick(){
+  if(!S.notif.on||!('Notification' in window)||Notification.permission!=='granted')return;
+  var n=new Date(),k=ds(n),T=pt(k),nm=n.getHours()*60+n.getMinutes();
+  PR.forEach(function(p){
+    var at=mins(T[p[0]])-S.notif.before,id=k+p[0];
+    if(nm>=at&&nm<at+5&&!fired[id]){
+      fired[id]=1;
+      var body=S.notif.before?'In '+S.notif.before+' Minuten ('+T[p[0]]+' Uhr)':'Es ist Zeit zum Gebet ('+T[p[0]]+' Uhr)';
+      var go=function(r){if(r&&r.showNotification)r.showNotification(p[1]+' Gebet',{body:body,tag:id});else new Notification(p[1]+' Gebet',{body:body,tag:id})};
+      if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(go,function(){go()});else go();
+    }
+  });
+}
 function vGebet(){
   var d=day(), T=pt(date), L=S.loc;
   var custom=!CITIES[L.city];
@@ -613,6 +680,14 @@ function vGebet(){
   var TB=['Sübhanallah','Elhamdülillah','Allahu Ekber'], tn=d.tas%99, tp=Math.floor(tn/33), tc=tn%33;
   h+='<section class="card"><h2>'+ic('mosque')+'Tesbih <em>'+TB[tp]+' · '+(tp+1)+'/3</em></h2><div class="tas">'+tc+'<span style="font-size:24px;color:var(--muted);font-weight:500"> / 33</span></div>'+bar(tc,33)+'<button class="tasb" data-a="tas">'+TB[tp]+'</button><p class="hint">Nach 33 wechselt es automatisch: Sübhanallah, Elhamdülillah, Allahu Ekber. Gesamt heute: '+d.tas+'</p><button class="btn ghost" data-a="tasreset">Zurücksetzen</button></section>';
   h+=vKaza();
+  var NF=S.notif, sup=('Notification' in window), perm=sup?Notification.permission:'denied';
+  h+='<section class="card"><h2>'+ic('clock')+'Erinnerungen <em>'+(NF.on&&perm==='granted'?'in der App an':'aus')+'</em></h2>'
+   +'<select data-ch="nbefore" aria-label="Zeitpunkt">'+[0,5,10,15,30].map(function(m){return '<option value="'+m+'"'+(NF.before===m?' selected':'')+'>'+(m?m+' Minuten vor dem Gebet':'Zur Gebetszeit')+'</option>'}).join('')+'</select>'
+   +'<button class="btn" data-a="ics">Kalender-Datei laden (30 Tage)</button>'
+   +(sup?'<button class="btn ghost" data-a="notifon">'+(NF.on&&perm==='granted'?'App-Benachrichtigungen ausschalten':'App-Benachrichtigungen einschalten')+'</button>':'')
+   +(perm==='denied'&&sup?'<p class="over" style="margin:0">Benachrichtigungen sind in den Einstellungen des Geräts blockiert.</p>':'')
+   +(nMsg?'<div class="flash">'+esc(nMsg)+'</div>':'')
+   +'<p class="hint">Zuverlässig auf dem iPhone: Lade die Kalender-Datei und tippe auf „Alle hinzufügen“. Dann erinnert dich der Kalender an jedes Gebet, auch wenn die App zu ist. App-Benachrichtigungen kommen nur, solange die App geöffnet oder im Hintergrund aktiv ist. Nach 30 Tagen lädst du die Datei neu, und wenn du den Ort wechselst, ebenfalls.</p></section>';
   h+='<section class="card"><h2>'+ic('pin')+'Ort und Berechnung</h2><form onsubmit="return false">'
    +'<select class="h" data-ch="city" aria-label="Stadt">'+Object.keys(CITIES).map(function(c){return '<option'+(L.city===c?' selected':'')+'>'+c+'</option>'}).join('')+'<option value="_custom"'+(custom?' selected':'')+'>Eigene Koordinaten</option></select>'
    +'<select class="h" data-ch="asr" aria-label="Asr-Berechnung"><option value="1"'+(L.asr==1?' selected':'')+'>İkindi: Standard</option><option value="2"'+(L.asr==2?' selected':'')+'>İkindi: Hanafi</option></select>'
@@ -636,7 +711,7 @@ function shift(n){var d=parse(date);d.setDate(d.getDate()+n);date=ds(d);render()
 document.addEventListener('click',function(ev){
   var el=ev.target.closest('[data-a]');if(!el)return;
   var a=el.dataset.a,id=el.dataset.id,d=day();
-  if(a==='tab'){tab=id;rMsg='';window.scrollTo(0,0);render();return}
+  if(a==='tab'){tab=id;rMsg='';nMsg='';window.scrollTo(0,0);render();return}
   if(a==='prev')return shift(-1);
   if(a==='next')return shift(1);
   if(a==='today'){date=ds(new Date());return render()}
@@ -668,6 +743,11 @@ document.addEventListener('click',function(ev){
   else if(a==='scango'){var sn=document.getElementById('scn');analyze(sn?sn.value.trim():'')}
   else if(a==='scanreset')scan=null;
   else if(a==='keyreset'){S.apiKey='';scan=null}
+  else if(a==='ics'){downloadIcs();nMsg='Kalender-Datei erstellt. Öffne sie und tippe auf „Alle hinzufügen“.'}
+  else if(a==='notifon'){
+    if(S.notif.on){S.notif.on=false;nMsg=''}
+    else{Notification.requestPermission().then(function(r){S.notif.on=(r==='granted');nMsg=r==='granted'?'Eingeschaltet. Die App meldet sich zur Gebetszeit, solange sie aktiv ist.':'Erlaubnis nicht erteilt.';save();render()});return}
+  }
   else if(a==='pickpet'&&PETS[id])S.pet=id;
   else if(a==='changepet'&&!S.timer)S.pet=null;
   save();render();
@@ -680,6 +760,7 @@ document.addEventListener('change',function(ev){
     if(el.value==='_custom')L.city='Eigener Ort';
     else{L.city=el.value;L.lat=CITIES[el.value][0];L.lng=CITIES[el.value][1]}
   }
+  else if(c==='nbefore')S.notif.before=+el.value;
   else if(c==='method')L.method=el.value;
   else if(c==='asr')L.asr=+el.value;
   else if(c==='lat'||c==='lng'){var v=parseFloat(el.value);if(isNaN(v))return;L[c]=c==='lat'?Math.max(-65,Math.min(65,v)):Math.max(-180,Math.min(180,v))}
@@ -721,6 +802,8 @@ document.addEventListener('submit',function(ev){
   save();render();
 });
 render();
+setInterval(notifTick,20000);notifTick();
+document.addEventListener('visibilitychange',function(){if(!document.hidden)notifTick()});
 setInterval(function(){var el=document.getElementById('tm');if(el&&S.timer)el.textContent=fmtClock(Date.now()-S.timer.start)},1000);
 setInterval(function(){var f=document.activeElement&&document.activeElement.tagName;if(f==='INPUT'||f==='SELECT')return;if((tab==='heute'&&isToday())||(tab==='uni'&&S.timer))render()},60000);
 </script>
