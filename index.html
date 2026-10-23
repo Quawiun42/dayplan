@@ -115,7 +115,15 @@ main>.card{box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .kd{background:var(--surface2);border-radius:16px;padding:12px 14px}
 .kd summary{font-weight:600;cursor:pointer}
 .kd[open] summary{margin-bottom:12px}
-.kd input,.kd select{background:var(--surface)}
+.kd input,.kd select,.kd textarea{background:var(--surface)}
+textarea{display:block;width:100%;min-height:88px;border-radius:12px;border:0;background:var(--surface2);padding:12px;resize:vertical;line-height:1.35}
+.rc ul,.rc ol{margin:0 0 12px;padding-left:22px;font-size:15px}
+.rc li{padding:2px 0}
+.rc h3{margin:12px 0 6px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.rc .meta{display:flex;gap:14px;font-size:14px;color:var(--muted);margin-bottom:4px}
+.kd .btn.ghost{background:var(--surface)}
+.rc .acts{display:flex;gap:8px}
+.rc .acts .btn{flex:1}
 .lb{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;font-size:12px;color:var(--muted);grid-column:span 3;min-width:0}
 .pet.on .pb{animation:hop 1.1s ease-in-out infinite;transform-origin:60px 100px}
 @keyframes hop{50%{transform:translateY(-6px)}}
@@ -189,6 +197,7 @@ function defaults(){
     v:2, plan:{wake:'07:00',meals:[{id:uid(),n:'Frühstück',t:'08:00'},{id:uid(),n:'Mittagessen',t:'13:00'},{id:uid(),n:'Abendessen',t:'19:00'}]}, goals:{kcal:2600,protein:160,water:8,glass:250,study:240},
     loc:{city:'Siegen',lat:50.875,lng:8.024,method:'mwl',asr:1},
     days:{}, recent:[], pet:null,
+    recipes:[{id:uid(),n:'Haferflocken mit Banane',min:10,k:520,p:24,ing:'80 g Haferflocken\n250 ml Milch\n1 Banane\n1 Messlöffel Proteinpulver\n1 TL Honig',steps:'Haferflocken und Milch in einem Topf 3 Minuten köcheln lassen.\nProteinpulver unterrühren.\nBanane in Scheiben schneiden und darauf legen.\nMit Honig süßen.'}],
     gym:{
       0:{name:'Push (Brust, Schulter, Trizeps)',time:'18:00',ex:[{id:uid(),n:'Bankdrücken',s:4,r:8,kg:70},{id:uid(),n:'Schulterdrücken',s:3,r:10,kg:30},{id:uid(),n:'Trizeps-Pushdown',s:3,r:12,kg:25}]},
       1:{name:'Pull (Rücken, Bizeps)',time:'18:00',ex:[{id:uid(),n:'Klimmzüge',s:4,r:8,kg:0},{id:uid(),n:'Rudern',s:4,r:10,kg:60},{id:uid(),n:'Bizeps-Curls',s:3,r:12,kg:15}]},
@@ -454,6 +463,29 @@ function vHeute(){
   return h;
 }
 
+var rMsg='';
+function lines(t){return String(t||'').split('\n').map(function(x){return x.trim()}).filter(Boolean)}
+function vRecipes(){
+  var R=S.recipes;
+  var h='<section class="card rc"><h2>'+ic('book')+'Rezeptbuch <em>'+R.length+' Rezepte</em></h2>'
+   +(rMsg?'<div class="flash">'+esc(rMsg)+'</div>':'')
+   +(R.length?'':'<div class="empty">Noch keine Rezepte. Füge unten dein erstes hinzu.</div>')
+   +R.map(function(r){
+     return '<details class="kd"><summary>'+esc(r.n)+'<small style="display:block;font-weight:400;color:var(--muted);font-size:13px">'+r.min+' Min · '+r.k+' kcal'+(r.p?' · '+r.p+' g Protein':'')+'</small></summary>'
+      +'<h3>Zutaten</h3><ul>'+lines(r.ing).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'
+      +'<h3>Zubereitung</h3><ol>'+lines(r.steps).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'
+      +'<div class="acts"><button class="btn" data-a="recipemeal" data-id="'+r.id+'">Als Mahlzeit eintragen</button><button class="btn ghost" data-a="delrecipe" data-id="'+r.id+'">Löschen</button></div></details>';
+   }).join('')
+   +'<details class="kd"><summary>Neues Rezept</summary><form data-f="recipe">'
+   +'<input name="n" placeholder="Name des Rezepts" required>'
+   +'<input class="q" name="min" type="number" inputmode="numeric" min="0" placeholder="Minuten" required>'
+   +'<input class="q" name="k" type="number" inputmode="numeric" min="0" placeholder="kcal" required>'
+   +'<input class="q" name="p" type="number" inputmode="numeric" min="0" placeholder="Protein g">'
+   +'<textarea name="ing" placeholder="Zutaten, eine pro Zeile" required></textarea>'
+   +'<textarea name="steps" placeholder="Zubereitung, ein Schritt pro Zeile" required></textarea>'
+   +'<button class="btn">Rezept speichern</button></form><p class="hint">Die kcal und das Protein gelten für eine Portion. Sie werden beim Eintragen als Mahlzeit übernommen.</p></details></section>';
+  return h;
+}
 function vEssen(){
   var d=day(), k=sumKcal(d), p=sumP(d), G=S.goals;
   var h='<section class="card"><h2>'+ic('food')+'Ernährung <em>Ziel '+G.kcal+' kcal · '+G.protein+' g</em></h2>'
@@ -470,6 +502,7 @@ function vEssen(){
     }).join(''):'<div class="empty">Noch nichts eingetragen.</div>');
   if(S.recent.length)h+='<p class="hint">Zuletzt gegessen, tippen zum Hinzufügen</p><div class="chips">'+S.recent.map(function(r,i){return '<button class="chip" data-a="recent" data-id="'+i+'">'+esc(r.n)+' · '+r.k+'</button>'}).join('')+'</div>';
   h+='<form data-f="meal"><input name="n" placeholder="Was hast du gegessen?" required><input class="q" name="k" type="number" inputmode="numeric" placeholder="kcal" required><input class="q" name="p" type="number" inputmode="numeric" placeholder="Protein g"><input class="q" name="time" type="time" value="'+nowHM()+'" required><button class="btn">Hinzufügen</button></form></section>';
+  h+=vRecipes();
   h+=vPlan();
   h+='<section class="card"><h2>'+ic('target')+'Tagesziele</h2><form data-f="goals">'
    +'<label class="lb">Kalorien<input name="kcal" type="number" inputmode="numeric" value="'+G.kcal+'"></label>'
@@ -555,7 +588,7 @@ function shift(n){var d=parse(date);d.setDate(d.getDate()+n);date=ds(d);render()
 document.addEventListener('click',function(ev){
   var el=ev.target.closest('[data-a]');if(!el)return;
   var a=el.dataset.a,id=el.dataset.id,d=day();
-  if(a==='tab'){tab=id;window.scrollTo(0,0);render();return}
+  if(a==='tab'){tab=id;rMsg='';window.scrollTo(0,0);render();return}
   if(a==='prev')return shift(-1);
   if(a==='next')return shift(1);
   if(a==='today'){date=ds(new Date());return render()}
@@ -580,6 +613,8 @@ document.addEventListener('click',function(ev){
   else if(a==='delstudy')d.study=d.study.filter(function(s){return s.id!==id});
   else if(a==='tas')d.tas++;
   else if(a==='tasreset')d.tas=0;
+  else if(a==='recipemeal'){var rc=S.recipes.filter(function(r){return r.id===id})[0];if(rc){d.meals.push({id:uid(),n:rc.n,k:rc.k,p:rc.p||0,time:nowHM()});S.recent=[{n:rc.n,k:rc.k,p:rc.p||0}].concat(S.recent.filter(function(r){return r.n!==rc.n})).slice(0,6);rMsg='Zum Tag hinzugefügt: '+rc.n}}
+  else if(a==='delrecipe')S.recipes=S.recipes.filter(function(r){return r.id!==id});
   else if(a==='pickpet'&&PETS[id])S.pet=id;
   else if(a==='changepet'&&!S.timer)S.pet=null;
   save();render();
@@ -611,6 +646,7 @@ document.addEventListener('submit',function(ev){
     if(!(days>0))kzMsg='Der Zeitraum ergibt keine offenen Tage. Prüfe die Daten.';
     else{kzMsg='';var wOn=v.witr==='1';S.kaza={fajr:days,dhuhr:days,asr:days,maghrib:days,isha:days,witr:wOn?days:0,witrOn:wOn,init:days*(wOn?6:5),days:days}}
   }
+  else if(k==='recipe'){S.recipes.unshift({id:uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,ing:v.ing.trim(),steps:v.steps.trim()});rMsg=''}
   else if(k==='wake'){S.plan.wake=v.wake}
   else if(k==='pmeal'){S.plan.meals.push({id:uid(),n:v.n.trim(),t:v.t})}
   else if(k==='study'){if(+v.m>0)d.study.push({id:uid(),m:Math.round(+v.m),n:(v.n||'').trim()})}
