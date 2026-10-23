@@ -116,6 +116,9 @@ main>.card{box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .kd summary{font-weight:600;cursor:pointer}
 .kd[open] summary{margin-bottom:12px}
 .kd input,.kd select,.kd textarea{background:var(--surface)}
+label.btn{display:grid;place-items:center;cursor:pointer}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.scp img{width:100%;max-height:240px;object-fit:cover;border-radius:16px;display:block}
 textarea{display:block;width:100%;min-height:88px;border-radius:12px;border:0;background:var(--surface2);padding:12px;resize:vertical;line-height:1.35}
 .rc ul,.rc ol{margin:0 0 12px;padding-left:22px;font-size:15px}
 .rc li{padding:2px 0}
@@ -196,7 +199,7 @@ function defaults(){
   return {
     v:2, plan:{wake:'07:00',meals:[{id:uid(),n:'Frühstück',t:'08:00'},{id:uid(),n:'Mittagessen',t:'13:00'},{id:uid(),n:'Abendessen',t:'19:00'}]}, goals:{kcal:2600,protein:160,water:8,glass:250,study:240},
     loc:{city:'Siegen',lat:50.875,lng:8.024,method:'mwl',asr:1},
-    days:{}, recent:[], pet:null,
+    days:{}, recent:[], pet:null, apiKey:'',
     recipes:[{id:uid(),n:'Haferflocken mit Banane',min:10,k:520,p:24,ing:'80 g Haferflocken\n250 ml Milch\n1 Banane\n1 Messlöffel Proteinpulver\n1 TL Honig',steps:'Haferflocken und Milch in einem Topf 3 Minuten köcheln lassen.\nProteinpulver unterrühren.\nBanane in Scheiben schneiden und darauf legen.\nMit Honig süßen.'}],
     gym:{
       0:{name:'Push (Brust, Schulter, Trizeps)',time:'18:00',ex:[{id:uid(),n:'Bankdrücken',s:4,r:8,kg:70},{id:uid(),n:'Schulterdrücken',s:3,r:10,kg:30},{id:uid(),n:'Trizeps-Pushdown',s:3,r:12,kg:25}]},
@@ -463,6 +466,46 @@ function vHeute(){
   return h;
 }
 
+var scan=null, MODEL='claude-sonnet-5-5';
+function shrink(file,cb){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var k=Math.min(1,1024/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.8))};im.onerror=function(){cb(null)};im.src=r.result};r.onerror=function(){cb(null)};r.readAsDataURL(file)}
+function analyze(note){
+  scan.state='busy';scan.msg='';
+  var q='Schätze die Kalorien und das Protein des Essens auf dem Foto für die gesamte sichtbare Portion.'+(note?' Hinweis vom Nutzer: '+note:'')+' Antworte nur mit JSON in dieser Form: {"name":"kurzer deutscher Name","kcal":ganze Zahl,"protein":ganze Zahl in Gramm,"hinweis":"ein kurzer Satz zur Schätzung"}';
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:MODEL,max_tokens:400,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:scan.img.split(',')[1]}},{type:'text',text:q}]}]})})
+  .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('Fehler '+r.status));return j})})
+  .then(function(j){
+    var t=(j.content||[]).map(function(c){return c.text||''}).join(''),m=t.match(/\{[\s\S]*\}/);
+    if(!m)throw new Error('Keine Antwort erkannt.');
+    var o=JSON.parse(m[0]);scan.res={n:String(o.name||'Mahlzeit'),k:Math.round(+o.kcal)||0,p:Math.round(+o.protein)||0,h:String(o.hinweis||'')};scan.state='done';
+  }).catch(function(e){scan.state='err';scan.msg=e instanceof TypeError?'Keine Verbindung. Prüfe dein Internet.':e.message})
+  .then(function(){if(tab==='essen')render()});
+}
+function vScan(){
+  var h='<section class="card scp"><h2>'+ic('target')+'Kalorienscanner <em>Foto-Schätzung</em></h2>';
+  if(!S.apiKey){
+    h+='<p class="hint">Für die Foto-Schätzung brauchst du einen eigenen Anthropic-API-Schlüssel (console.anthropic.com). Er bleibt nur auf diesem Gerät gespeichert. Jede Schätzung kostet ein paar Cent.</p>'
+     +'<form data-f="apikey"><input name="key" type="password" autocomplete="off" placeholder="API-Schlüssel (sk-ant-…)" required><button class="btn">Schlüssel speichern</button></form>';
+    return h+'</section>';
+  }
+  if(!scan||!scan.img){
+    h+='<label class="btn">Essen fotografieren<input class="vh" type="file" accept="image/*" capture="environment" data-scan="1"></label>'
+     +'<p class="hint">Die Kamera öffnet sich. Das Ergebnis ist eine Schätzung, du kannst es vor dem Eintragen ändern.</p>';
+  }else{
+    h+='<img src="'+scan.img+'" alt="Foto vom Essen">';
+    if(scan.state==='idle'||scan.state==='err'){
+      h+=(scan.msg?'<p class="over" style="margin:0">'+esc(scan.msg)+'</p>':'')
+       +'<input id="scn" placeholder="Optional: Hinweis oder Menge, z. B. 300 g Reis"><button class="btn" data-a="scango">Analysieren</button>';
+    }else if(scan.state==='busy'){
+      h+='<div class="flash">Analysiere …</div>';
+    }else{
+      h+='<form data-f="scanmeal"><input name="n" value="'+esc(scan.res.n)+'" required aria-label="Name"><input class="h" name="k" type="number" inputmode="numeric" value="'+scan.res.k+'" required aria-label="kcal"><input class="h" name="p" type="number" inputmode="numeric" value="'+scan.res.p+'" aria-label="Protein g">'
+       +'<button class="btn">Als Mahlzeit eintragen</button></form>'+(scan.res.h?'<p class="hint">'+esc(scan.res.h)+'</p>':'');
+    }
+    h+='<button class="btn ghost" data-a="scanreset">Anderes Foto</button>';
+  }
+  return h+'<button class="btn ghost" data-a="keyreset">API-Schlüssel entfernen</button></section>';
+}
 var rMsg='';
 function lines(t){return String(t||'').split('\n').map(function(x){return x.trim()}).filter(Boolean)}
 function vRecipes(){
@@ -492,6 +535,7 @@ function vEssen(){
    +'<div class="stat"><span>Kalorien</span>'+bar(k,G.kcal,k>G.kcal?'var(--bad)':'')+'<b>'+k+'</b></div>'
    +'<div class="stat"><span>Protein</span>'+bar(p,G.protein)+'<b>'+p+' g</b></div>'
    +'<p class="hint">'+(k<=G.kcal?'Noch '+(G.kcal-k)+' kcal und '+Math.max(0,G.protein-p)+' g Protein bis zum Ziel.':'Du liegst '+(k-G.kcal)+' kcal über dem Ziel.')+'</p></section>';
+  h+=vScan();
   var gl=G.glass||250;
   h+='<section class="card"><h2>'+ic('drop')+'Wasser <em>'+(d.water*gl)+' von '+(G.water*gl)+' ml</em></h2><div class="chips">';
   for(var i=0;i<G.water;i++)h+='<button class="glass'+(i<d.water?' on':'')+'" data-a="water" data-id="'+(i+1)+'" aria-label="Glas '+(i+1)+', '+((i+1)*gl)+' ml"></button>';
@@ -615,6 +659,9 @@ document.addEventListener('click',function(ev){
   else if(a==='tasreset')d.tas=0;
   else if(a==='recipemeal'){var rc=S.recipes.filter(function(r){return r.id===id})[0];if(rc){d.meals.push({id:uid(),n:rc.n,k:rc.k,p:rc.p||0,time:nowHM()});S.recent=[{n:rc.n,k:rc.k,p:rc.p||0}].concat(S.recent.filter(function(r){return r.n!==rc.n})).slice(0,6);rMsg='Zum Tag hinzugefügt: '+rc.n}}
   else if(a==='delrecipe')S.recipes=S.recipes.filter(function(r){return r.id!==id});
+  else if(a==='scango'){var sn=document.getElementById('scn');analyze(sn?sn.value.trim():'')}
+  else if(a==='scanreset')scan=null;
+  else if(a==='keyreset'){S.apiKey='';scan=null}
   else if(a==='pickpet'&&PETS[id])S.pet=id;
   else if(a==='changepet'&&!S.timer)S.pet=null;
   save();render();
@@ -630,6 +677,10 @@ document.addEventListener('change',function(ev){
   else if(c==='asr')L.asr=+el.value;
   else if(c==='lat'||c==='lng'){var v=parseFloat(el.value);if(isNaN(v))return;L[c]=c==='lat'?Math.max(-65,Math.min(65,v)):Math.max(-180,Math.min(180,v))}
   save();render();
+});
+document.addEventListener('change',function(ev){
+  var el=ev.target;if(!el.dataset||!el.dataset.scan||!el.files||!el.files[0])return;
+  shrink(el.files[0],function(url){scan=url?{img:url,state:'idle',msg:'',res:null}:{img:'',state:'idle',msg:'Das Foto konnte nicht gelesen werden.'};render()});
 });
 document.addEventListener('submit',function(ev){
   ev.preventDefault();
@@ -647,6 +698,8 @@ document.addEventListener('submit',function(ev){
     else{kzMsg='';var wOn=v.witr==='1';S.kaza={fajr:days,dhuhr:days,asr:days,maghrib:days,isha:days,witr:wOn?days:0,witrOn:wOn,init:days*(wOn?6:5),days:days}}
   }
   else if(k==='recipe'){S.recipes.unshift({id:uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,ing:v.ing.trim(),steps:v.steps.trim()});rMsg=''}
+  else if(k==='apikey'){S.apiKey=v.key.trim()}
+  else if(k==='scanmeal'){var sm={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,time:nowHM()};d.meals.push(sm);S.recent=[{n:sm.n,k:sm.k,p:sm.p}].concat(S.recent.filter(function(r){return r.n!==sm.n})).slice(0,6);scan=null}
   else if(k==='wake'){S.plan.wake=v.wake}
   else if(k==='pmeal'){S.plan.meals.push({id:uid(),n:v.n.trim(),t:v.t})}
   else if(k==='study'){if(+v.m>0)d.study.push({id:uid(),m:Math.round(+v.m),n:(v.n||'').trim()})}
