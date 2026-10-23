@@ -119,14 +119,15 @@ main>.card{box-shadow:0 1px 2px rgba(0,0,0,.04)}
 label.btn{display:grid;place-items:center;cursor:pointer}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 .scp img{width:100%;max-height:240px;object-fit:cover;border-radius:16px;display:block}
-textarea{display:block;width:100%;min-height:88px;border-radius:12px;border:0;background:var(--surface2);padding:12px;resize:vertical;line-height:1.35}
+textarea{font:inherit;display:block;width:100%;min-height:88px;border-radius:12px;border:0;background:var(--surface2);padding:12px;resize:vertical;line-height:1.35}
 .rc ul,.rc ol{margin:0 0 12px;padding-left:22px;font-size:15px}
 .rc li{padding:2px 0}
 .rc h3{margin:12px 0 6px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .rc .meta{display:flex;gap:14px;font-size:14px;color:var(--muted);margin-bottom:4px}
 .kd .btn.ghost{background:var(--surface)}
-.rc .acts{display:flex;gap:8px}
-.rc .acts .btn{flex:1}
+.rc .acts{display:flex;flex-wrap:wrap;gap:8px}
+.rc .acts .btn{flex:1 1 40%}
+.rc .acts .btn.full{flex-basis:100%}
 .lb{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;font-size:12px;color:var(--muted);grid-column:span 3;min-width:0}
 .pet.on .pb{animation:hop 1.1s ease-in-out infinite;transform-origin:60px 100px}
 @keyframes hop{50%{transform:translateY(-6px)}}
@@ -458,6 +459,7 @@ function vHeute(){
   ev.push({t:'07:00',n:'Aufstehen',g:'Start'});
   S.plan.meals.forEach(function(m){ev.push({t:m.t,n:m.n,g:'Essen'})});
   cl.forEach(function(c){ev.push({t:c.a,n:c.n,g:'Uni',s:'bis '+c.b+(c.room?' · '+c.room:'')})});
+  if(g.ex.length)ev.push({t:g.time,n:g.name,g:'Gym',s:gd+' von '+g.ex.length+' Übungen erledigt',done:gd===g.ex.length});
   ev.sort(function(a,b){return a.t<b.t?-1:a.t>b.t?1:0});
   h+='<section class="card"><h2>'+ic('cal')+'Terminplaner <em>'+ev.length+' Punkte</em></h2><div class="tl">'+ev.map(function(e){
     var past=e.done||(isToday()&&mins(e.t)<nm);
@@ -506,7 +508,7 @@ function vScan(){
   }
   return h+'<button class="btn ghost" data-a="keyreset">API-Schlüssel entfernen</button></section>';
 }
-var rMsg='';
+var rMsg='', rEdit=null;
 function lines(t){return String(t||'').split('\n').map(function(x){return x.trim()}).filter(Boolean)}
 function vRecipes(){
   var R=S.recipes;
@@ -517,16 +519,17 @@ function vRecipes(){
      return '<details class="kd"><summary>'+esc(r.n)+'<small style="display:block;font-weight:400;color:var(--muted);font-size:13px">'+r.min+' Min · '+r.k+' kcal'+(r.p?' · '+r.p+' g Protein':'')+'</small></summary>'
       +'<h3>Zutaten</h3><ul>'+lines(r.ing).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'
       +'<h3>Zubereitung</h3><ol>'+lines(r.steps).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'
-      +'<div class="acts"><button class="btn" data-a="recipemeal" data-id="'+r.id+'">Als Mahlzeit eintragen</button><button class="btn ghost" data-a="delrecipe" data-id="'+r.id+'">Löschen</button></div></details>';
+      +'<div class="acts"><button class="btn full" data-a="recipemeal" data-id="'+r.id+'">Als Mahlzeit eintragen</button><button class="btn ghost" data-a="editrecipe" data-id="'+r.id+'">Bearbeiten</button><button class="btn ghost" data-a="delrecipe" data-id="'+r.id+'">Löschen</button></div></details>';
    }).join('')
-   +'<details class="kd"><summary>Neues Rezept</summary><form data-f="recipe">'
-   +'<input name="n" placeholder="Name des Rezepts" required>'
-   +'<input class="q" name="min" type="number" inputmode="numeric" min="0" placeholder="Minuten" required>'
-   +'<input class="q" name="k" type="number" inputmode="numeric" min="0" placeholder="kcal" required>'
-   +'<input class="q" name="p" type="number" inputmode="numeric" min="0" placeholder="Protein g">'
-   +'<textarea name="ing" placeholder="Zutaten, eine pro Zeile" required></textarea>'
-   +'<textarea name="steps" placeholder="Zubereitung, ein Schritt pro Zeile" required></textarea>'
-   +'<button class="btn">Rezept speichern</button></form><p class="hint">Die kcal und das Protein gelten für eine Portion. Sie werden beim Eintragen als Mahlzeit übernommen.</p></details></section>';
+   +'<details class="kd"'+(rEdit?' open':'')+'><summary>'+(rEdit?'Rezept bearbeiten':'Neues Rezept')+'</summary><form data-f="recipe">'
+   +'<input type="hidden" name="id" value="'+(rEdit?rEdit.id:'')+'">'
+   +'<input name="n" placeholder="Name des Rezepts" value="'+esc(rEdit?rEdit.n:'')+'" required>'
+   +'<input class="q" name="min" type="number" inputmode="numeric" min="0" placeholder="Minuten" value="'+(rEdit?rEdit.min:'')+'" required>'
+   +'<input class="q" name="k" type="number" inputmode="numeric" min="0" placeholder="kcal" value="'+(rEdit?rEdit.k:'')+'" required>'
+   +'<input class="q" name="p" type="number" inputmode="numeric" min="0" placeholder="Protein g" value="'+(rEdit&&rEdit.p?rEdit.p:'')+'">'
+   +'<textarea name="ing" placeholder="Zutaten, eine pro Zeile" required>'+esc(rEdit?rEdit.ing:'')+'</textarea>'
+   +'<textarea name="steps" placeholder="Zubereitung, ein Schritt pro Zeile" required>'+esc(rEdit?rEdit.steps:'')+'</textarea>'
+   +'<button class="btn">'+(rEdit?'Änderungen speichern':'Rezept speichern')+'</button>'+(rEdit?'<button type="button" class="btn ghost" data-a="canceledit">Abbrechen</button>':'')+'</form><p class="hint">Die kcal und das Protein gelten für eine Portion. Sie werden beim Eintragen als Mahlzeit übernommen.</p></details></section>';
   return h;
 }
 function vEssen(){
@@ -560,10 +563,11 @@ function vEssen(){
 
 function vGym(){
   var d=day(), g=gymToday(), n=g.ex.filter(function(e){return d.gym[e.id]}).length;
-  var h='<section class="card"><h2>'+ic('dumbbell')+WD[wd()]+' <em>'+(g.ex.length?g.ex.length+' Übungen':'kein Training')+'</em></h2>'
+  var h='<section class="card"><h2>'+ic('dumbbell')+WD[wd()]+' <em>'+(g.ex.length?n+' von '+g.ex.length+' erledigt':'kein Training')+'</em></h2>'
+   +(g.ex.length?bar(n,g.ex.length):'')
    +'<form data-f="gymhead"><input class="h" name="name" value="'+esc(g.name)+'" aria-label="Name des Trainings" required><input class="h" name="time" type="time" value="'+g.time+'" aria-label="Uhrzeit"><button class="btn ghost">Speichern</button></form>'
    +(g.ex.length?g.ex.map(function(e){
-      return '<div class="row"><div class="t">'+esc(e.n)+'<small>'+e.s+' × '+e.r+(e.kg?' · '+e.kg+' kg':' · Körpergewicht')+'</small></div><button class="x" data-a="delex" data-id="'+e.id+'" aria-label="Löschen">×</button></div>';
+      return '<div class="row">'+chk(d.gym[e.id],'gymchk',e.id)+'<div class="t" style="'+(d.gym[e.id]?'text-decoration:line-through;opacity:.5':'')+'">'+esc(e.n)+'<small>'+e.s+' × '+e.r+(e.kg?' · '+e.kg+' kg':' · Körpergewicht')+'</small></div><button class="x" data-a="delex" data-id="'+e.id+'" aria-label="Löschen">×</button></div>';
     }).join(''):'<div class="empty">Ruhetag. Füge unten Übungen hinzu, wenn du trainieren willst.</div>')+'</section>';
   h+='<section class="card"><h2>'+ic('dumbbell')+'Übung hinzufügen</h2><form data-f="ex"><input name="n" placeholder="Übung" required><input class="q" name="s" type="number" inputmode="numeric" placeholder="Sätze" required><input class="q" name="r" type="number" inputmode="numeric" placeholder="Wdh." required><input class="q" name="kg" type="number" inputmode="decimal" step="0.5" placeholder="kg"><button class="btn">Hinzufügen</button></form><p class="hint">Der Plan gilt für jeden '+WD[wd()]+'. Wechsle oben den Tag, um andere Tage zu planen.</p></section>';
   return h;
@@ -658,13 +662,16 @@ document.addEventListener('click',function(ev){
   else if(a==='tas')d.tas++;
   else if(a==='tasreset')d.tas=0;
   else if(a==='recipemeal'){var rc=S.recipes.filter(function(r){return r.id===id})[0];if(rc){d.meals.push({id:uid(),n:rc.n,k:rc.k,p:rc.p||0,time:nowHM()});S.recent=[{n:rc.n,k:rc.k,p:rc.p||0}].concat(S.recent.filter(function(r){return r.n!==rc.n})).slice(0,6);rMsg='Zum Tag hinzugefügt: '+rc.n}}
-  else if(a==='delrecipe')S.recipes=S.recipes.filter(function(r){return r.id!==id});
+  else if(a==='editrecipe'){rEdit=S.recipes.filter(function(r){return r.id===id})[0]||null;rMsg=''}
+  else if(a==='canceledit')rEdit=null;
+  else if(a==='delrecipe'){S.recipes=S.recipes.filter(function(r){return r.id!==id});if(rEdit&&rEdit.id===id)rEdit=null}
   else if(a==='scango'){var sn=document.getElementById('scn');analyze(sn?sn.value.trim():'')}
   else if(a==='scanreset')scan=null;
   else if(a==='keyreset'){S.apiKey='';scan=null}
   else if(a==='pickpet'&&PETS[id])S.pet=id;
   else if(a==='changepet'&&!S.timer)S.pet=null;
   save();render();
+  if(a==='editrecipe'&&rEdit){var rf=document.querySelector('[data-f=recipe]');if(rf)rf.scrollIntoView({block:'center'})}
 });
 document.addEventListener('change',function(ev){
   var el=ev.target,c=el.dataset.ch;if(!c)return;
@@ -697,7 +704,11 @@ document.addEventListener('submit',function(ev){
     if(!(days>0))kzMsg='Der Zeitraum ergibt keine offenen Tage. Prüfe die Daten.';
     else{kzMsg='';var wOn=v.witr==='1';S.kaza={fajr:days,dhuhr:days,asr:days,maghrib:days,isha:days,witr:wOn?days:0,witrOn:wOn,init:days*(wOn?6:5),days:days}}
   }
-  else if(k==='recipe'){S.recipes.unshift({id:uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,ing:v.ing.trim(),steps:v.steps.trim()});rMsg=''}
+  else if(k==='recipe'){
+    var nr={id:v.id||uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,ing:v.ing.trim(),steps:v.steps.trim()};
+    if(v.id)S.recipes=S.recipes.map(function(r){return r.id===v.id?nr:r});else S.recipes.unshift(nr);
+    rEdit=null;rMsg=v.id?'Gespeichert: '+nr.n:''
+  }
   else if(k==='apikey'){S.apiKey=v.key.trim()}
   else if(k==='scanmeal'){var sm={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,time:nowHM()};d.meals.push(sm);S.recent=[{n:sm.n,k:sm.k,p:sm.p}].concat(S.recent.filter(function(r){return r.n!==sm.n})).slice(0,6);scan=null}
   else if(k==='wake'){S.plan.wake=v.wake}
