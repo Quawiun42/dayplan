@@ -529,7 +529,8 @@ function vGebet(){
    +PR.map(function(p){
      return '<div class="row"><div class="t" style="font-weight:600">'+p[1]+'</div><span class="tm" style="font-size:17px;color:var(--fg)">'+T[p[0]]+'</span></div>';
    }).join('')+'<p class="hint">Güneş '+T.sunrise+' · berechnet für '+esc(L.city)+'</p></section>';
-  h+='<section class="card"><h2>'+ic('mosque')+'Tesbih <em>Ziel 33</em></h2><div class="tas">'+d.tas+'</div>'+bar(d.tas%33||(d.tas?33:0),33)+'<button class="tasb" data-a="tas">Sübhanallah</button><button class="btn ghost" data-a="tasreset">Zurücksetzen</button></section>';
+  var TB=['Sübhanallah','Elhamdülillah','Allahu Ekber'], tn=d.tas%99, tp=Math.floor(tn/33), tc=tn%33;
+  h+='<section class="card"><h2>'+ic('mosque')+'Tesbih <em>'+TB[tp]+' · '+(tp+1)+'/3</em></h2><div class="tas">'+tc+'<span style="font-size:24px;color:var(--muted);font-weight:500"> / 33</span></div>'+bar(tc,33)+'<button class="tasb" data-a="tas">'+TB[tp]+'</button><p class="hint">Nach 33 wechselt es automatisch: Sübhanallah, Elhamdülillah, Allahu Ekber. Gesamt heute: '+d.tas+'</p><button class="btn ghost" data-a="tasreset">Zurücksetzen</button></section>';
   h+=vKaza();
   h+='<section class="card"><h2>'+ic('pin')+'Ort und Berechnung</h2><form onsubmit="return false">'
    +'<select class="h" data-ch="city" aria-label="Stadt">'+Object.keys(CITIES).map(function(c){return '<option'+(L.city===c?' selected':'')+'>'+c+'</option>'}).join('')+'<option value="_custom"'+(custom?' selected':'')+'>Eigene Koordinaten</option></select>'
