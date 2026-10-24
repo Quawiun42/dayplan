@@ -128,6 +128,10 @@ main>.card{box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .wk.dn{gap:2px}
 .sw{width:34px;height:34px;border-radius:50%;border:0;cursor:pointer;padding:0}
 .sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--fg)}
+.card.fold>h2{cursor:pointer;-webkit-user-select:none;user-select:none}
+.card.fold>h2::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 2px 3px 6px;flex:none;transition:transform .2s}
+.card.fold.closed>h2::after{transform:rotate(-45deg);margin-bottom:0}
+.card.fold.closed>:not(h2){display:none}
 label.btn{display:grid;place-items:center;cursor:pointer}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 .scp img{width:100%;max-height:240px;object-fit:cover;border-radius:16px;display:block}
@@ -1071,6 +1075,28 @@ function vGebet(){
 }
 
 /* ---------- render ---------- */
+var FOLD0=['essen:Essenszeiten#0','essen:Kalorienrechner#0','essen:Tagesziele#0','essen:Meine Lebensmittel#0','essen:Wochenplan#0',
+ 'gym:Vorlage#0','gym:Diese Woche#0','gym:Übung hinzufügen#0',
+ 'uni:Noten#0','uni:Semesterziele#0','uni:Prüfungen#0','uni:Karteikarten#0','uni:Notizen#0','uni:Erinnerungen#0','uni:Stundenplan#0','uni:Lernzeit pro Fach#0',
+ 'gebet:Kaza-Rechner#0','gebet:Dua-Sammlung#0','gebet:Erinnerungen#0','gebet:Ort und Berechnung#0',
+ 'mehr:Farbe#0','mehr:Heute-Seite anpassen#0','mehr:Ramadan#0','mehr:Sicherung#0','mehr:Zakat-Rechner#0','mehr:Islamischer Kalender#0','mehr:Abzeichen#0','mehr:Einkaufsliste#0','mehr:Gewicht#0','mehr:Gewohnheiten#0','mehr:Kompakt-Ansicht#0','mehr:Schlaf#1'];
+function applyFold(){
+  if(['essen','gym','uni','gebet','mehr'].indexOf(tab)<0)return;
+  var seen={};
+  document.querySelectorAll('#m>section.card').forEach(function(c){
+    var h=c.querySelector(':scope>h2');if(!h||c.classList.contains('next')||c.classList.contains('pc'))return;
+    var cl=h.cloneNode(true);cl.querySelectorAll('em,svg').forEach(function(x){x.remove()});var t=cl.textContent.trim();
+    seen[t]=seen[t]==null?0:seen[t]+1;
+    var key=tab+':'+t+'#'+seen[t],v=S.fold&&S.fold[key];if(v==null)v=FOLD0.indexOf(key)>=0?0:1;
+    c.classList.add('fold');c.dataset.fk=key;h.setAttribute('role','button');h.setAttribute('aria-expanded',v?'true':'false');
+    if(!v)c.classList.add('closed');
+  });
+}
+document.addEventListener('click',function(ev){
+  var h=ev.target.closest&&ev.target.closest('#m>section.card.fold>h2');if(!h)return;
+  var c=h.parentNode,cl=c.classList.toggle('closed');h.setAttribute('aria-expanded',cl?'false':'true');
+  (S.fold||(S.fold={}))[c.dataset.fk]=cl?0:1;save();
+});
 function render(){
   var dt=parse(date);
   var hj=hijri(dt);
@@ -1078,6 +1104,7 @@ function render(){
   document.getElementById('ht').textContent=dt.toLocaleDateString('de-DE',isToday()?{weekday:'long',day:'numeric',month:'long'}:{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('today').hidden=isToday();
   document.getElementById('m').innerHTML={heute:vHeute,essen:vEssen,gym:vGym,uni:vUni,gebet:vGebet,mehr:vMehr,kompakt:vKompakt}[tab]();
+  applyFold();
   drawNav();
 }
 function shift(n){var d=parse(date);d.setDate(d.getDate()+n);date=ds(d);render()}
