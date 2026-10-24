@@ -213,7 +213,7 @@ function defaults(){
   return {
     v:2, plan:{wake:'07:00',meals:[{id:uid(),n:'Frühstück',t:'08:00'},{id:uid(),n:'Mittagessen',t:'13:00'},{id:uid(),n:'Abendessen',t:'19:00'}]}, goals:{kcal:2600,protein:160,water:8,glass:250,study:240},
     loc:{city:'Siegen',lat:50.875,lng:8.024,method:'mwl',asr:1},
-    days:{}, recent:[], pet:null, apiKey:'', notif:{on:false,before:0}, supps:[], mealplan:{}, foods:[], quranGoal:5, zakat:null, lastBackup:0, snooze:0, body:null, subj:'', pomo:false, accent:'black', heute:{order:['next','rings','ramadan','meals','hadith','uni','plan'],hidden:[]}, weights:[], shop:[], grades:[], ramadan:false,
+    days:{}, recent:[], pet:null, apiKey:'', notif:{on:false,before:0}, exams:[], cards:[], notes:[], sem:{cr:0,grade:0}, habits:[], supps:[], mealplan:{}, foods:[], quranGoal:5, zakat:null, lastBackup:0, snooze:0, body:null, subj:'', pomo:false, accent:'black', heute:{order:['next','rings','ramadan','meals','habits','hadith','uni','plan'],hidden:[]}, weights:[], shop:[], grades:[], ramadan:false,
     recipes:[{id:uid(),n:'Haferflocken mit Banane',min:10,k:520,p:24,ing:'80 g Haferflocken\n250 ml Milch\n1 Banane\n1 Messlöffel Proteinpulver\n1 TL Honig',steps:'Haferflocken und Milch in einem Topf 3 Minuten köcheln lassen.\nProteinpulver unterrühren.\nBanane in Scheiben schneiden und darauf legen.\nMit Honig süßen.'}],
     gym:{
       0:{name:'Push (Brust, Schulter, Trizeps)',time:'18:00',ex:[{id:uid(),n:'Bankdrücken',s:4,r:8,kg:70},{id:uid(),n:'Schulterdrücken',s:3,r:10,kg:30},{id:uid(),n:'Trizeps-Pushdown',s:3,r:12,kg:25}]},
@@ -244,7 +244,7 @@ function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
 var date=ds(new Date()), tab='heute';
 function isToday(){return date===ds(new Date())}
 function wd(){return (parse(date).getDay()+6)%7}
-function day(k){k=k||date;var x=S.days[k]||(S.days[k]={prayers:{},meals:[],water:0,gym:{},tas:0});if(!x.study)x.study=[];if(!x.gymlog)x.gymlog={};if(x.quran==null)x.quran=0;if(!x.cardio)x.cardio=[];if(!x.supps)x.supps={};return x}
+function day(k){k=k||date;var x=S.days[k]||(S.days[k]={prayers:{},meals:[],water:0,gym:{},tas:0});if(!x.study)x.study=[];if(!x.gymlog)x.gymlog={};if(x.quran==null)x.quran=0;if(!x.cardio)x.cardio=[];if(!x.supps)x.supps={};if(!x.habits)x.habits={};return x}
 function nowHM(){var n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
 function mins(t){var p=t.split(':');return +p[0]*60+ +p[1]}
 function pct(a,b){return b>0?Math.min(100,Math.round(a/b*100)):0}
@@ -464,11 +464,28 @@ function ring(v,max,val,label,sub){
 }
 var ACC={black:['Schwarz',null],blue:['Blau','#0a84ff'],green:['Grün','#30a46c'],orange:['Orange','#e8750f'],purple:['Lila','#8e5cf5']};
 function applyAccent(){var r=document.documentElement.style,c=ACC[S.accent]&&ACC[S.accent][1];if(c){r.setProperty('--ac',c);r.setProperty('--on','#ffffff')}else{r.removeProperty('--ac');r.removeProperty('--on')}}
-var HL={next:'Nächstes Gebet',rings:'Tagesringe',ramadan:'Ramadan',meals:'Essensplan heute',hadith:'Hadis des Tages',uni:'Uni heute',plan:'Terminplaner'};
-function heuteOrder(){var D=['next','rings','ramadan','meals','hadith','uni','plan'],o=(S.heute&&S.heute.order||[]).filter(function(k){return D.indexOf(k)>=0});D.forEach(function(k){if(o.indexOf(k)<0)o.push(k)});return o}
+var HL={next:'Nächstes Gebet',rings:'Tagesringe',ramadan:'Ramadan',meals:'Essensplan heute',habits:'Gewohnheiten',hadith:'Hadis des Tages',uni:'Uni heute',plan:'Terminplaner'};
+function heuteOrder(){var D=['next','rings','ramadan','meals','habits','hadith','uni','plan'],o=(S.heute&&S.heute.order||[]).filter(function(k){return D.indexOf(k)>=0});D.forEach(function(k){if(o.indexOf(k)<0)o.push(k)});return o}
 function backupDue(){if(S.snooze&&Date.now()<S.snooze)return false;if(!S.lastBackup)return Object.keys(S.days).length>=3;return Date.now()-S.lastBackup>7*864e5}
 function backupAge(){return S.lastBackup?Math.floor((Date.now()-S.lastBackup)/864e5):-1}
 function backupCard(){var n=backupAge();return '<section class="card"><h2>'+ic('calc')+'Sicherung fällig <em>'+(n<0?'noch nie gesichert':'vor '+n+' Tagen')+'</em></h2><p class="hint" style="margin:0">Deine Daten liegen nur in diesem Browser.</p><button class="btn" data-a="tab" data-id="mehr">Jetzt sichern</button><button class="btn ghost" data-a="snooze">Später erinnern</button></section>'}
+function habitStreak(id){var n=0,c=new Date();function ok(k){var x=S.days[k];return x&&x.habits&&x.habits[id]}if(!ok(ds(c)))c.setDate(c.getDate()-1);while(ok(ds(c))){n++;c.setDate(c.getDate()-1)}return n}
+function vHabitsHeute(d){
+  return '<section class="card"><h2>'+ic('target')+'Gewohnheiten <em>'+S.habits.filter(function(x){return d.habits[x.id]}).length+' von '+S.habits.length+'</em></h2>'
+   +S.habits.map(function(x){var st=habitStreak(x.id);return '<div class="row">'+chk(d.habits[x.id],'habchk',x.id)+'<div class="t">'+esc(x.n)+(st?'<small>Serie: '+st+' '+(st===1?'Tag':'Tage')+'</small>':'')+'</div></div>'}).join('')+'</section>';
+}
+function examHint(){
+  var t=ds(new Date()),e=S.exams.filter(function(x){return x.d>=t}).sort(function(a,b){return a.d<b.d?-1:1})[0];
+  if(!e)return '';var n=Math.round((parse(e.d)-parse(t))/864e5);
+  return '<p class="hint">Nächste Prüfung: '+esc(e.n)+(n===0?' heute':n===1?' morgen':' in '+n+' Tagen')+'</p>';
+}
+function vKompakt(){
+  var d=day(),T=pt(date),nm=mins(nowHM()),nx=isToday()?PR.filter(function(p){return mins(T[p[0]])>nm})[0]:null,g=gymToday(),gd=g.ex.filter(function(e){return d.gym[e.id]}).length;
+  var diff=nx?mins(T[nx[0]])-nm:0;
+  return '<section class="card next"><small class="tag">Nächstes Gebet</small><div class="big">'+(nx?nx[1]:'Alle Zeiten vorbei')+'</div>'+(nx?'<div class="bigt">'+T[nx[0]]+' Uhr<span> · in '+(diff>=60?Math.floor(diff/60)+' Std ':'')+(diff%60)+' Min</span></div>':'')+'</section>'
+   +'<section class="card"><div class="kh"><div><b>'+sumKcal(d)+'</b><span>kcal von '+S.goals.kcal+'</span></div><div><b>'+sumP(d)+' g</b><span>Protein von '+S.goals.protein+' g</span></div><div><b>'+fmtM(studyNow(d))+'</b><span>Lernzeit von '+fmtM(S.goals.study)+'</span></div><div><b>'+d.water+'/'+S.goals.water+'</b><span>Gläser Wasser</span></div></div>'
+   +(g.ex.length?'<p class="hint">Training heute: '+esc(g.name)+' · '+gd+' von '+g.ex.length+' Übungen</p>':'')+'<button class="btn ghost" data-a="tab" data-id="heute">Zurück zu Heute</button></section>';
+}
 var HAD=[
 ['Die Taten werden nur nach den Absichten beurteilt, und jedem steht zu, was er beabsichtigt hat.','Bukhari 1, Muslim 1907'],
 ['Keiner von euch glaubt wirklich, bis er für seinen Bruder liebt, was er für sich selbst liebt.','Bukhari 13, Muslim 45'],
@@ -526,6 +543,7 @@ function vHeute(){
     var rf=mins(T.fajr),rm=mins(T.maghrib),rl=nm<rf?'Sahur endet in '+fmtM(rf-nm):nm<rm?'Iftar in '+fmtM(rm-nm):'Iftar ist vorbei';
     P.ramadan='<section class="card"><h2>'+ic('sun')+'Ramadan <em>'+rl+'</em></h2><div class="kh"><div><b>'+T.fajr+'</b><span>Sahur endet</span></div><div><b>'+T.maghrib+'</b><span>Iftar</span></div></div></section>';
   }
+  if(S.habits.length)P.habits=vHabitsHeute(d);
   var mpl=planOf(wd()),mpi=SL.filter(function(x){return recById(mpl[x[0]])});
   if(mpi.length)P.meals='<section class="card"><h2>'+ic('food')+'Essensplan <em>'+mpi.length+' Mahlzeiten</em></h2>'+mpi.map(function(x){var r=recById(mpl[x[0]]);return '<div class="row"><span class="tm" style="min-width:76px">'+x[1]+'</span><div class="t">'+esc(r.n)+'<small>'+r.min+' Min · '+r.k+' kcal</small></div></div>'}).join('')+'</section>';
   var hd=hadithOf(date);
@@ -543,6 +561,7 @@ function vHeute(){
     return '<div class="ev'+(past?' past':'')+'"><span class="et">'+e.t+'</span><i></i><div class="t"><small class="tag">'+ic(EI[e.g],1)+e.g+'</small>'+esc(e.n)+(e.s?'<small>'+esc(e.s)+'</small>':'')+'</div></div>';
   }).join('')+'</div></section>';
   if(isToday()&&backupDue())h+=backupCard();
+  if(P.uni)P.uni=P.uni.replace(/<\/section>$/,examHint()+'</section>');
   heuteOrder().forEach(function(k){if(P[k]&&(S.heute.hidden||[]).indexOf(k)<0)h+=P[k]});
   return h;
 }
@@ -742,7 +761,42 @@ function dueLabel(t){
   var today=ds(new Date()), x=parse(t.due).toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   return t.due<today&&!t.done?'<span class="over">überfällig · '+x+'</span>':'fällig '+x;
 }
-var uMsg='';
+var uMsg='', cardSess=null, noteF='';
+var BOXD=[1,2,4,8,16,32];
+function studiedFor(n){var t=0;Object.keys(S.days).forEach(function(k){(S.days[k].study||[]).forEach(function(e){if(e.n===n)t+=e.m})});return t}
+function vExams(){
+  var t=ds(new Date()),L=S.exams.slice().sort(function(a,b){return a.d<b.d?-1:1});
+  return '<section class="card"><h2>'+ic('target')+'Prüfungen <em>'+S.exams.filter(function(x){return x.d>=t}).length+' bevorstehend</em></h2>'
+   +(L.length?L.map(function(e){
+      var n=Math.round((parse(e.d)-parse(t))/864e5),done=studiedFor(e.n),left=Math.max(0,Math.round(e.h*60)-done),plan=n>0&&e.h?' · Lernplan: noch '+fmtM(left)+', etwa '+fmtM(Math.ceil(left/n))+' pro Tag':'';
+      return '<div class="row"><div class="t" style="'+(n<0?'opacity:.5':'')+'">'+esc(e.n)+'<small>'+parse(e.d).toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'})+' · '+(n<0?'vorbei':n===0?'heute':n===1?'morgen':'in '+n+' Tagen')+(n>=0?plan:'')+'</small>'+(e.h&&n>=0?bar(done,Math.round(e.h*60)):'')+'</div><button class="x" data-a="delexam" data-id="'+e.id+'" aria-label="Löschen">×</button></div>';
+     }).join(''):'<div class="empty">Keine Prüfungen eingetragen.</div>')
+   +'<form data-f="exam"><input name="n" list="subj-l" placeholder="Fach" required><datalist id="subj-l">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><input class="h" name="d" type="date" required aria-label="Datum"><input class="h" name="h" type="number" inputmode="decimal" step="0.5" min="0" placeholder="Lernziel in Std"><button class="btn">Prüfung hinzufügen</button></form><p class="hint">Die Lernzeit zählt für das Fach mit demselben Namen (wähle beim Lernen das Fach aus).</p></section>';
+}
+function dueCards(){var t=ds(new Date());return S.cards.filter(function(c){return c.due<=t}).sort(function(a,b){return a.due<b.due?-1:1})}
+function vCards(){
+  var due=dueCards(),h='<section class="card"><h2>'+ic('book')+'Karteikarten <em>'+due.length+' fällig · '+S.cards.length+' gesamt</em></h2>';
+  if(cardSess&&due.length){
+    var c=due[0];
+    h+='<div class="flash" style="padding:18px"><small class="tag" style="margin-bottom:8px">'+esc(c.deck||'Ohne Fach')+'</small><div style="font-size:19px;line-height:1.35;white-space:pre-wrap">'+esc(c.q)+'</div>'+(cardSess.show?'<hr style="border:0;border-top:1px solid var(--line);margin:14px 0"><div style="font-size:19px;line-height:1.35;white-space:pre-wrap;font-weight:500">'+esc(c.a)+'</div>':'')+'</div>'
+     +(cardSess.show?'<div class="chips" style="flex-wrap:nowrap"><button class="btn ghost" style="flex:1" data-a="cardno">Nicht gewusst</button><button class="btn" style="flex:1" data-a="cardok">Gewusst</button></div>':'<button class="btn" data-a="cardshow">Antwort zeigen</button>')
+     +'<button class="btn ghost" data-a="cardend">Beenden</button>';
+  }else{
+    if(cMsgC)h+='<div class="flash">'+esc(cMsgC)+'</div>';
+    h+=due.length?'<button class="btn" data-a="cardstart">Lernen starten ('+due.length+' fällig)</button>':(S.cards.length?'<div class="empty">Heute ist alles gelernt.</div>':'<div class="empty">Noch keine Karten.</div>');
+  }
+  h+='<details class="kd"><summary>Neue Karte</summary><form data-f="card"><input name="deck" list="subj-l2" placeholder="Fach (optional)"><datalist id="subj-l2">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><textarea name="q" placeholder="Frage" required></textarea><textarea name="a" placeholder="Antwort" required></textarea><button class="btn">Karte speichern</button></form></details>';
+  if(S.cards.length)h+='<details class="kd"><summary>Alle Karten ('+S.cards.length+')</summary>'+S.cards.map(function(c){return '<div class="row"><div class="t">'+esc(c.q)+'<small>'+esc(c.deck||'Ohne Fach')+' · Stufe '+c.box+' · nächstes Mal '+parse(c.due).toLocaleDateString('de-DE',{day:'numeric',month:'short'})+'</small></div><button class="x" data-a="delcard" data-id="'+c.id+'" aria-label="Löschen">×</button></div>'}).join('')+'</details>';
+  return h+'</section>';
+}
+var cMsgC='';
+function vNotes(){
+  var L=S.notes.filter(function(x){return !noteF||x.n===noteF});
+  return '<section class="card"><h2>'+ic('book')+'Notizen <em>'+L.length+'</em></h2>'
+   +'<select data-ch="nfilter" aria-label="Fach filtern"><option value="">Alle Fächer</option>'+subjNames().map(function(x){return '<option'+(noteF===x?' selected':'')+'>'+esc(x)+'</option>'}).join('')+'</select>'
+   +(L.length?L.map(function(x){return '<div class="row" style="align-items:flex-start"><div class="t"><small>'+esc(x.n||'Ohne Fach')+' · '+parse(x.d).toLocaleDateString('de-DE',{day:'numeric',month:'short'})+'</small><div style="white-space:pre-wrap">'+esc(x.t)+'</div></div><button class="x" data-a="delnote" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join(''):'<div class="empty">Keine Notizen.</div>')
+   +'<form data-f="note"><input name="n" list="subj-l3" placeholder="Fach (optional)" value="'+esc(noteF)+'"><datalist id="subj-l3">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><textarea name="t" placeholder="Notiz" required></textarea><button class="btn">Notiz speichern</button></form></section>';
+}
 function vUni(){
   var cl=classesToday();
   var h=vLern()+vSubj()+'<section class="card"><h2>'+ic('book')+WD[wd()]+' <em>'+cl.length+' Termine</em></h2>'
@@ -755,6 +809,11 @@ function vUni(){
   h+='<section class="card"><h2>'+ic('calc')+'Noten <em>'+(GR.length?'Ø '+ga.toFixed(2).replace('.',',')+' · '+gc+' CP':'noch keine')+'</em></h2>'
    +GR.map(function(g){return '<div class="row"><span class="tm">'+g.g.toFixed(1).replace('.',',')+'</span><div class="t">'+esc(g.n)+'<small>'+g.cr+' CP</small></div><button class="x" data-a="delgrade" data-id="'+g.id+'" aria-label="Löschen">×</button></div>'}).join('')
    +'<form data-f="grade"><input name="n" placeholder="Fach" required><input class="h" name="g" type="number" step="0.1" min="1" max="5" inputmode="decimal" placeholder="Note" required><input class="h" name="cr" type="number" min="1" inputmode="numeric" placeholder="Credits" required><button class="btn">Note hinzufügen</button></form><p class="hint">Der Durchschnitt ist nach Credits gewichtet.</p></section>';
+  h+='<section class="card"><h2>'+ic('target')+'Semesterziele</h2>'
+   +'<div class="stat"><span>Credits</span>'+bar(gc,S.sem.cr)+'<b>'+gc+(S.sem.cr?' / '+S.sem.cr:'')+'</b></div>'
+   +'<div class="stat"><span>Note</span>'+bar(S.sem.grade&&ga?Math.max(0,6-ga):0,S.sem.grade?6-S.sem.grade:1)+'<b>'+(ga?ga.toFixed(2).replace('.',','):'–')+(S.sem.grade?' / '+String(S.sem.grade).replace('.',','):'')+'</b></div>'
+   +'<form data-f="sem"><input class="h" name="cr" type="number" inputmode="numeric" min="0" placeholder="Credits-Ziel" value="'+(S.sem.cr||'')+'"><input class="h" name="grade" type="number" inputmode="decimal" step="0.1" min="1" max="5" placeholder="Notenziel" value="'+(S.sem.grade||'')+'"><button class="btn ghost">Ziele speichern</button></form></section>';
+  h+=vExams()+vCards()+vNotes();
   h+='<section class="card"><h2>'+ic('clock')+'Erinnerungen</h2><button class="btn" data-a="uniics">Kalender-Datei laden</button>'+(uMsg?'<div class="flash">'+esc(uMsg)+'</div>':'')+'<p class="hint">Enthält deinen Stundenplan (15 Minuten vorher, 20 Wochen lang) und alle offenen Fristen (am Vortag um 9 Uhr). Öffne die Datei auf dem iPhone und tippe auf „Alle hinzufügen“.</p></section>';
   h+='<section class="card"><h2>'+ic('cal')+'Stundenplan</h2>';
   WD.forEach(function(w,i){
@@ -828,6 +887,10 @@ function vMehr(){
   h+='<section class="card"><h2>'+ic('target')+'Farbe</h2><div class="chips">'+Object.keys(ACC).map(function(k){return '<button class="sw'+(S.accent===k?' on':'')+'" data-a="accent" data-id="'+k+'" style="background:'+(ACC[k][1]||'var(--fg)')+'" aria-label="'+ACC[k][0]+'"></button>'}).join('')+'</div><p class="hint">Gewählt: '+ACC[S.accent][0]+'</p></section>';
   var HO=heuteOrder();
   h+='<section class="card"><h2>'+ic('cal')+'Heute-Seite anpassen</h2>'+HO.map(function(k,i){return '<div class="row">'+chk((S.heute.hidden||[]).indexOf(k)<0,'htoggle',k)+'<div class="t">'+HL[k]+'</div><button class="x" data-a="hup" data-id="'+k+'" aria-label="Nach oben"'+(i?'':' disabled style="opacity:.3"')+'>▲</button><button class="x" data-a="hdown" data-id="'+k+'" aria-label="Nach unten"'+(i<HO.length-1?'':' disabled style="opacity:.3"')+'>▼</button></div>'}).join('')+'<p class="hint">Haken = sichtbar. Mit den Pfeilen änderst du die Reihenfolge.</p></section>';
+  h+='<section class="card"><h2>'+ic('target')+'Gewohnheiten <em>'+S.habits.length+'</em></h2>'
+   +(S.habits.length?S.habits.map(function(x){var st=habitStreak(x.id);return '<div class="row"><div class="t">'+esc(x.n)+(st?'<small>Serie: '+st+' '+(st===1?'Tag':'Tage')+'</small>':'')+'</div><button class="x" data-a="delhabit" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join(''):'<div class="empty">Lege tägliche Gewohnheiten an, zum Beispiel Lesen oder Spazieren. Sie erscheinen auf der Heute-Seite zum Abhaken.</div>')
+   +'<form data-f="habit"><input name="n" placeholder="Neue Gewohnheit" required><button class="btn">Hinzufügen</button></form></section>';
+  h+='<section class="card"><h2>'+ic('clock')+'Kompakt-Ansicht</h2><button class="btn ghost" data-a="tab" data-id="kompakt">Öffnen</button><p class="hint">Eine schlanke Seite mit den wichtigsten Zahlen. Tipp: Hänge „?kompakt“ an die Adresse der App, um sie direkt zu öffnen.</p></section>';
   h+=vSleep();
   h+=vHijri();
   h+=vZakat();
@@ -1014,7 +1077,7 @@ function render(){
   document.getElementById('hs').textContent=(isToday()?greet():dt.toLocaleDateString('de-DE',{weekday:'long'}))+(hj?' · '+hj.day+'. '+HM[hj.month-1]:'');
   document.getElementById('ht').textContent=dt.toLocaleDateString('de-DE',isToday()?{weekday:'long',day:'numeric',month:'long'}:{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('today').hidden=isToday();
-  document.getElementById('m').innerHTML={heute:vHeute,essen:vEssen,gym:vGym,uni:vUni,gebet:vGebet,mehr:vMehr}[tab]();
+  document.getElementById('m').innerHTML={heute:vHeute,essen:vEssen,gym:vGym,uni:vUni,gebet:vGebet,mehr:vMehr,kompakt:vKompakt}[tab]();
   drawNav();
 }
 function shift(n){var d=parse(date);d.setDate(d.getDate()+n);date=ds(d);render()}
@@ -1071,6 +1134,15 @@ document.addEventListener('click',function(ev){
   else if(a==='shopclear')S.shop=S.shop.filter(function(x){return !x.done});
   else if(a==='delweight')S.weights=S.weights.filter(function(x){return x.id!==id});
   else if(a==='range')rangeN=+id;
+  else if(a==='habchk')d.habits[id]=!d.habits[id];
+  else if(a==='delhabit')S.habits=S.habits.filter(function(x){return x.id!==id});
+  else if(a==='delexam')S.exams=S.exams.filter(function(x){return x.id!==id});
+  else if(a==='delnote')S.notes=S.notes.filter(function(x){return x.id!==id});
+  else if(a==='delcard')S.cards=S.cards.filter(function(x){return x.id!==id});
+  else if(a==='cardstart'){cardSess={show:false};cMsgC=''}
+  else if(a==='cardshow'&&cardSess)cardSess.show=true;
+  else if(a==='cardend'){cardSess=null}
+  else if((a==='cardok'||a==='cardno')&&cardSess){var cd0=dueCards()[0];if(cd0){cd0.box=a==='cardok'?Math.min(6,cd0.box+1):1;var nd=new Date();nd.setDate(nd.getDate()+BOXD[cd0.box-1]);cd0.due=ds(nd)}cardSess.show=false;if(!dueCards().length){cardSess=null;cMsgC='Alle fälligen Karten gelernt.'}}
   else if(a==='plday')planDay=+id;
   else if(a==='planshop'){var pn=0;for(var pi=0;pi<7;pi++)SL.forEach(function(x){var rc2=recById(planOf(pi)[x[0]]);if(rc2)pn+=addShop(lines(rc2.ing))});pMsg=pn+' Zutaten auf der Einkaufsliste'}
   else if(a==='planeat'){var pe=0,pp2=planDay==null?wd():planDay;SL.forEach(function(x){var rc3=recById(planOf(pp2)[x[0]]);if(rc3){d.meals.push({id:uid(),n:rc3.n,k:rc3.k,p:rc3.p||0,c:rc3.c||0,f:rc3.f||0,time:nowHM()});pe++}});pMsg=pe?pe+' Mahlzeiten eingetragen':'Für diesen Tag ist nichts geplant'}
@@ -1103,6 +1175,7 @@ document.addEventListener('change',function(ev){
   else if(c==='exkg'){var xe=gymToday().ex.filter(function(e){return e.id===el.dataset.id})[0];if(xe){xe.kg=Math.max(0,+el.value||0);var dd=day();if(dd.gym[xe.id])dd.gymlog[xe.n]={kg:xe.kg,s:xe.s,r:xe.r}}}
   else if(c==='subj')S.subj=el.value;
   else if(c==='mp'){var mpd=planDay==null?wd():planDay,mpo=S.mealplan[mpd]||(S.mealplan[mpd]={});mpo[el.dataset.slot]=el.value}
+  else if(c==='nfilter')noteF=el.value;
   else if(c==='nbefore')S.notif.before=+el.value;
   else if(c==='method')L.method=el.value;
   else if(c==='asr')L.asr=+el.value;
@@ -1155,6 +1228,11 @@ document.addEventListener('submit',function(ev){
   else if(k==='supp'){S.supps.push({id:uid(),n:v.n.trim()})}
   else if(k==='cardio'){if(+v.min>0)d.cardio.push({id:uid(),t:v.t,min:Math.round(+v.min),km:Math.round((+v.km||0)*10)/10})}
   else if(k==='sleep'){d.sleep={bed:v.bed,wake:v.wake}}
+  else if(k==='habit'){S.habits.push({id:uid(),n:v.n.trim()})}
+  else if(k==='exam'){S.exams.push({id:uid(),n:v.n.trim(),d:v.d,h:Math.max(0,+v.h||0)})}
+  else if(k==='card'){S.cards.push({id:uid(),deck:(v.deck||'').trim(),q:v.q.trim(),a:v.a.trim(),box:1,due:ds(new Date())})}
+  else if(k==='note'){S.notes.unshift({id:uid(),n:(v.n||'').trim(),t:v.t.trim(),d:ds(new Date())})}
+  else if(k==='sem'){S.sem={cr:Math.max(0,Math.round(+v.cr)||0),grade:Math.min(5,Math.max(0,+v.grade||0))}}
   else if(k==='apikey'){S.apiKey=v.key.trim()}
   else if(k==='scanmeal'){var sm={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,c:+v.c||0,f:+v.f||0,time:nowHM()};d.meals.push(sm);S.recent=[{n:sm.n,k:sm.k,p:sm.p,c:sm.c,f:sm.f}].concat(S.recent.filter(function(r){return r.n!==sm.n})).slice(0,6);scan=null}
   else if(k==='wake'){S.plan.wake=v.wake}
@@ -1166,6 +1244,7 @@ document.addEventListener('submit',function(ev){
   else if(k==='class'){S.classes.push({id:uid(),n:v.n.trim(),d:+v.d,a:v.a,b:v.b,room:(v.room||'').trim()})}
   save();render();
 });
+if(location.search.indexOf('kompakt')>=0)tab='kompakt';
 applyAccent();
 render();
 setInterval(notifTick,20000);notifTick();
