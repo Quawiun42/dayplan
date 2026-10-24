@@ -213,7 +213,7 @@ function defaults(){
   return {
     v:2, plan:{wake:'07:00',meals:[{id:uid(),n:'Frühstück',t:'08:00'},{id:uid(),n:'Mittagessen',t:'13:00'},{id:uid(),n:'Abendessen',t:'19:00'}]}, goals:{kcal:2600,protein:160,water:8,glass:250,study:240},
     loc:{city:'Siegen',lat:50.875,lng:8.024,method:'mwl',asr:1},
-    days:{}, recent:[], pet:null, apiKey:'', notif:{on:false,before:0}, lastBackup:0, snooze:0, body:null, subj:'', pomo:false, accent:'black', heute:{order:['next','rings','ramadan','hadith','uni','plan'],hidden:[]}, weights:[], shop:[], grades:[], ramadan:false,
+    days:{}, recent:[], pet:null, apiKey:'', notif:{on:false,before:0}, exams:[], cards:[], notes:[], sem:{cr:0,grade:0}, habits:[], supps:[], mealplan:{}, foods:[], quranGoal:5, zakat:null, lastBackup:0, snooze:0, body:null, subj:'', pomo:false, accent:'black', heute:{order:['next','rings','ramadan','meals','habits','hadith','uni','plan'],hidden:[]}, weights:[], shop:[], grades:[], ramadan:false,
     recipes:[{id:uid(),n:'Haferflocken mit Banane',min:10,k:520,p:24,ing:'80 g Haferflocken\n250 ml Milch\n1 Banane\n1 Messlöffel Proteinpulver\n1 TL Honig',steps:'Haferflocken und Milch in einem Topf 3 Minuten köcheln lassen.\nProteinpulver unterrühren.\nBanane in Scheiben schneiden und darauf legen.\nMit Honig süßen.'}],
     gym:{
       0:{name:'Push (Brust, Schulter, Trizeps)',time:'18:00',ex:[{id:uid(),n:'Bankdrücken',s:4,r:8,kg:70},{id:uid(),n:'Schulterdrücken',s:3,r:10,kg:30},{id:uid(),n:'Trizeps-Pushdown',s:3,r:12,kg:25}]},
@@ -244,7 +244,7 @@ function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
 var date=ds(new Date()), tab='heute';
 function isToday(){return date===ds(new Date())}
 function wd(){return (parse(date).getDay()+6)%7}
-function day(k){k=k||date;var x=S.days[k]||(S.days[k]={prayers:{},meals:[],water:0,gym:{},tas:0});if(!x.study)x.study=[];if(!x.gymlog)x.gymlog={};return x}
+function day(k){k=k||date;var x=S.days[k]||(S.days[k]={prayers:{},meals:[],water:0,gym:{},tas:0});if(!x.study)x.study=[];if(!x.gymlog)x.gymlog={};if(x.quran==null)x.quran=0;if(!x.cardio)x.cardio=[];if(!x.supps)x.supps={};if(!x.habits)x.habits={};return x}
 function nowHM(){var n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
 function mins(t){var p=t.split(':');return +p[0]*60+ +p[1]}
 function pct(a,b){return b>0?Math.min(100,Math.round(a/b*100)):0}
@@ -310,6 +310,8 @@ function drawNav(){
 function chk(on,a,id){return '<button class="chk'+(on?' on':'')+'" data-a="'+a+'" data-id="'+id+'" aria-pressed="'+!!on+'">'+(on?'✓':'')+'</button>'}
 function bar(v,max,c){return '<div class="bar"'+(c?' style="--c:'+c+'"':'')+'><i style="width:'+pct(v,max)+'%"></i></div>'}
 function sumKcal(d){return d.meals.reduce(function(a,m){return a+m.k},0)}
+function sumC(d){return d.meals.reduce(function(a,m){return a+(m.c||0)},0)}
+function sumF(d){return d.meals.reduce(function(a,m){return a+(m.f||0)},0)}
 function sumP(d){return d.meals.reduce(function(a,m){return a+m.p},0)}
 function studyMin(d){return d.study.reduce(function(a,s){return a+s.m},0)}
 function fmtM(m){var h=Math.floor(m/60),r=m%60;return h?h+':'+String(r).padStart(2,'0')+' Std':r+' Min'}
@@ -462,11 +464,28 @@ function ring(v,max,val,label,sub){
 }
 var ACC={black:['Schwarz',null],blue:['Blau','#0a84ff'],green:['Grün','#30a46c'],orange:['Orange','#e8750f'],purple:['Lila','#8e5cf5']};
 function applyAccent(){var r=document.documentElement.style,c=ACC[S.accent]&&ACC[S.accent][1];if(c){r.setProperty('--ac',c);r.setProperty('--on','#ffffff')}else{r.removeProperty('--ac');r.removeProperty('--on')}}
-var HL={next:'Nächstes Gebet',rings:'Tagesringe',ramadan:'Ramadan',hadith:'Hadis des Tages',uni:'Uni heute',plan:'Terminplaner'};
-function heuteOrder(){var D=['next','rings','ramadan','hadith','uni','plan'],o=(S.heute&&S.heute.order||[]).filter(function(k){return D.indexOf(k)>=0});D.forEach(function(k){if(o.indexOf(k)<0)o.push(k)});return o}
+var HL={next:'Nächstes Gebet',rings:'Tagesringe',ramadan:'Ramadan',meals:'Essensplan heute',habits:'Gewohnheiten',hadith:'Hadis des Tages',uni:'Uni heute',plan:'Terminplaner'};
+function heuteOrder(){var D=['next','rings','ramadan','meals','habits','hadith','uni','plan'],o=(S.heute&&S.heute.order||[]).filter(function(k){return D.indexOf(k)>=0});D.forEach(function(k){if(o.indexOf(k)<0)o.push(k)});return o}
 function backupDue(){if(S.snooze&&Date.now()<S.snooze)return false;if(!S.lastBackup)return Object.keys(S.days).length>=3;return Date.now()-S.lastBackup>7*864e5}
 function backupAge(){return S.lastBackup?Math.floor((Date.now()-S.lastBackup)/864e5):-1}
 function backupCard(){var n=backupAge();return '<section class="card"><h2>'+ic('calc')+'Sicherung fällig <em>'+(n<0?'noch nie gesichert':'vor '+n+' Tagen')+'</em></h2><p class="hint" style="margin:0">Deine Daten liegen nur in diesem Browser.</p><button class="btn" data-a="tab" data-id="mehr">Jetzt sichern</button><button class="btn ghost" data-a="snooze">Später erinnern</button></section>'}
+function habitStreak(id){var n=0,c=new Date();function ok(k){var x=S.days[k];return x&&x.habits&&x.habits[id]}if(!ok(ds(c)))c.setDate(c.getDate()-1);while(ok(ds(c))){n++;c.setDate(c.getDate()-1)}return n}
+function vHabitsHeute(d){
+  return '<section class="card"><h2>'+ic('target')+'Gewohnheiten <em>'+S.habits.filter(function(x){return d.habits[x.id]}).length+' von '+S.habits.length+'</em></h2>'
+   +S.habits.map(function(x){var st=habitStreak(x.id);return '<div class="row">'+chk(d.habits[x.id],'habchk',x.id)+'<div class="t">'+esc(x.n)+(st?'<small>Serie: '+st+' '+(st===1?'Tag':'Tage')+'</small>':'')+'</div></div>'}).join('')+'</section>';
+}
+function examHint(){
+  var t=ds(new Date()),e=S.exams.filter(function(x){return x.d>=t}).sort(function(a,b){return a.d<b.d?-1:1})[0];
+  if(!e)return '';var n=Math.round((parse(e.d)-parse(t))/864e5);
+  return '<p class="hint">Nächste Prüfung: '+esc(e.n)+(n===0?' heute':n===1?' morgen':' in '+n+' Tagen')+'</p>';
+}
+function vKompakt(){
+  var d=day(),T=pt(date),nm=mins(nowHM()),nx=isToday()?PR.filter(function(p){return mins(T[p[0]])>nm})[0]:null,g=gymToday(),gd=g.ex.filter(function(e){return d.gym[e.id]}).length;
+  var diff=nx?mins(T[nx[0]])-nm:0;
+  return '<section class="card next"><small class="tag">Nächstes Gebet</small><div class="big">'+(nx?nx[1]:'Alle Zeiten vorbei')+'</div>'+(nx?'<div class="bigt">'+T[nx[0]]+' Uhr<span> · in '+(diff>=60?Math.floor(diff/60)+' Std ':'')+(diff%60)+' Min</span></div>':'')+'</section>'
+   +'<section class="card"><div class="kh"><div><b>'+sumKcal(d)+'</b><span>kcal von '+S.goals.kcal+'</span></div><div><b>'+sumP(d)+' g</b><span>Protein von '+S.goals.protein+' g</span></div><div><b>'+fmtM(studyNow(d))+'</b><span>Lernzeit von '+fmtM(S.goals.study)+'</span></div><div><b>'+d.water+'/'+S.goals.water+'</b><span>Gläser Wasser</span></div></div>'
+   +(g.ex.length?'<p class="hint">Training heute: '+esc(g.name)+' · '+gd+' von '+g.ex.length+' Übungen</p>':'')+'<button class="btn ghost" data-a="tab" data-id="heute">Zurück zu Heute</button></section>';
+}
 var HAD=[
 ['Die Taten werden nur nach den Absichten beurteilt, und jedem steht zu, was er beabsichtigt hat.','Bukhari 1, Muslim 1907'],
 ['Keiner von euch glaubt wirklich, bis er für seinen Bruder liebt, was er für sich selbst liebt.','Bukhari 13, Muslim 45'],
@@ -524,6 +543,9 @@ function vHeute(){
     var rf=mins(T.fajr),rm=mins(T.maghrib),rl=nm<rf?'Sahur endet in '+fmtM(rf-nm):nm<rm?'Iftar in '+fmtM(rm-nm):'Iftar ist vorbei';
     P.ramadan='<section class="card"><h2>'+ic('sun')+'Ramadan <em>'+rl+'</em></h2><div class="kh"><div><b>'+T.fajr+'</b><span>Sahur endet</span></div><div><b>'+T.maghrib+'</b><span>Iftar</span></div></div></section>';
   }
+  if(S.habits.length)P.habits=vHabitsHeute(d);
+  var mpl=planOf(wd()),mpi=SL.filter(function(x){return recById(mpl[x[0]])});
+  if(mpi.length)P.meals='<section class="card"><h2>'+ic('food')+'Essensplan <em>'+mpi.length+' Mahlzeiten</em></h2>'+mpi.map(function(x){var r=recById(mpl[x[0]]);return '<div class="row"><span class="tm" style="min-width:76px">'+x[1]+'</span><div class="t">'+esc(r.n)+'<small>'+r.min+' Min · '+r.k+' kcal</small></div></div>'}).join('')+'</section>';
   var hd=hadithOf(date);
   P.hadith='<section class="card"><h2>'+ic('mosque')+'Hadis des Tages</h2><p style="margin:0;font-size:19px;line-height:1.4;letter-spacing:-.01em;text-wrap:pretty">„'+esc(hd[0])+'“</p><p class="hint">'+esc(hd[1])+' · sinngemäße Übersetzung</p></section>';
   P.uni='<section class="card"><h2>'+ic('book')+'Uni <em>'+cl.length+' Termine · '+open+' Aufgaben offen</em></h2>'
@@ -539,6 +561,7 @@ function vHeute(){
     return '<div class="ev'+(past?' past':'')+'"><span class="et">'+e.t+'</span><i></i><div class="t"><small class="tag">'+ic(EI[e.g],1)+e.g+'</small>'+esc(e.n)+(e.s?'<small>'+esc(e.s)+'</small>':'')+'</div></div>';
   }).join('')+'</div></section>';
   if(isToday()&&backupDue())h+=backupCard();
+  if(P.uni)P.uni=P.uni.replace(/<\/section>$/,examHint()+'</section>');
   heuteOrder().forEach(function(k){if(P[k]&&(S.heute.hidden||[]).indexOf(k)<0)h+=P[k]});
   return h;
 }
@@ -547,14 +570,14 @@ var scan=null, MODEL='claude-sonnet-5-5';
 function shrink(file,cb){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var k=Math.min(1,1024/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.8))};im.onerror=function(){cb(null)};im.src=r.result};r.onerror=function(){cb(null)};r.readAsDataURL(file)}
 function analyze(note){
   scan.state='busy';scan.msg='';
-  var q='Schätze die Kalorien und das Protein des Essens auf dem Foto für die gesamte sichtbare Portion.'+(note?' Hinweis vom Nutzer: '+note:'')+' Antworte nur mit JSON in dieser Form: {"name":"kurzer deutscher Name","kcal":ganze Zahl,"protein":ganze Zahl in Gramm,"hinweis":"ein kurzer Satz zur Schätzung"}';
+  var q='Schätze die Kalorien und das Protein des Essens auf dem Foto für die gesamte sichtbare Portion.'+(note?' Hinweis vom Nutzer: '+note:'')+' Antworte nur mit JSON in dieser Form: {"name":"kurzer deutscher Name","kcal":ganze Zahl,"protein":ganze Zahl in Gramm,"kohlenhydrate":ganze Zahl in Gramm,"fett":ganze Zahl in Gramm,"hinweis":"ein kurzer Satz zur Schätzung"}';
   fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model:MODEL,max_tokens:400,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:scan.img.split(',')[1]}},{type:'text',text:q}]}]})})
   .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('Fehler '+r.status));return j})})
   .then(function(j){
     var t=(j.content||[]).map(function(c){return c.text||''}).join(''),m=t.match(/\{[\s\S]*\}/);
     if(!m)throw new Error('Keine Antwort erkannt.');
-    var o=JSON.parse(m[0]);scan.res={n:String(o.name||'Mahlzeit'),k:Math.round(+o.kcal)||0,p:Math.round(+o.protein)||0,h:String(o.hinweis||'')};scan.state='done';
+    var o=JSON.parse(m[0]);scan.res={n:String(o.name||'Mahlzeit'),k:Math.round(+o.kcal)||0,p:Math.round(+o.protein)||0,c:Math.round(+o.kohlenhydrate)||0,f:Math.round(+o.fett)||0,h:String(o.hinweis||'')};scan.state='done';
   }).catch(function(e){scan.state='err';scan.msg=e instanceof TypeError?'Keine Verbindung. Prüfe dein Internet.':e.message})
   .then(function(){if(tab==='essen')render()});
 }
@@ -576,7 +599,7 @@ function vScan(){
     }else if(scan.state==='busy'){
       h+='<div class="flash">Analysiere …</div>';
     }else{
-      h+='<form data-f="scanmeal"><input name="n" value="'+esc(scan.res.n)+'" required aria-label="Name"><input class="h" name="k" type="number" inputmode="numeric" value="'+scan.res.k+'" required aria-label="kcal"><input class="h" name="p" type="number" inputmode="numeric" value="'+scan.res.p+'" aria-label="Protein g">'
+      h+='<form data-f="scanmeal"><input name="n" value="'+esc(scan.res.n)+'" required aria-label="Name"><input class="h" name="k" type="number" inputmode="numeric" value="'+scan.res.k+'" required aria-label="kcal"><input class="h" name="p" type="number" inputmode="numeric" value="'+scan.res.p+'" aria-label="Protein g"><input class="h" name="c" type="number" inputmode="numeric" value="'+(scan.res.c||0)+'" aria-label="Kohlenhydrate g"><input class="h" name="f" type="number" inputmode="numeric" value="'+(scan.res.f||0)+'" aria-label="Fett g">'
        +'<button class="btn">Als Mahlzeit eintragen</button></form>'+(scan.res.h?'<p class="hint">'+esc(scan.res.h)+'</p>':'');
     }
     h+='<button class="btn ghost" data-a="scanreset">Anderes Foto</button>';
@@ -603,6 +626,8 @@ function vRecipes(){
    +'<input class="q" name="min" type="number" inputmode="numeric" min="0" placeholder="Minuten" value="'+(rEdit?rEdit.min:'')+'" required>'
    +'<input class="q" name="k" type="number" inputmode="numeric" min="0" placeholder="kcal" value="'+(rEdit?rEdit.k:'')+'" required>'
    +'<input class="q" name="p" type="number" inputmode="numeric" min="0" placeholder="Protein g" value="'+(rEdit&&rEdit.p?rEdit.p:'')+'">'
+   +'<input class="q" name="c" type="number" inputmode="numeric" min="0" placeholder="KH g" value="'+(rEdit&&rEdit.c?rEdit.c:'')+'">'
+   +'<input class="q" name="f" type="number" inputmode="numeric" min="0" placeholder="Fett g" value="'+(rEdit&&rEdit.f?rEdit.f:'')+'">'
    +'<textarea name="ing" placeholder="Zutaten, eine pro Zeile" required>'+esc(rEdit?rEdit.ing:'')+'</textarea>'
    +'<textarea name="steps" placeholder="Zubereitung, ein Schritt pro Zeile" required>'+esc(rEdit?rEdit.steps:'')+'</textarea>'
    +'<button class="btn">'+(rEdit?'Änderungen speichern':'Rezept speichern')+'</button>'+(rEdit?'<button type="button" class="btn ghost" data-a="canceledit">Abbrechen</button>':'')+'</form><p class="hint">Die kcal und das Protein gelten für eine Portion. Sie werden beim Eintragen als Mahlzeit übernommen.</p></details></section>';
@@ -626,12 +651,39 @@ function vBody(){
    +'<button class="btn">Berechnen</button></form><p class="hint">Schätzung nach der Mifflin-St-Jeor-Formel. Kein Ersatz für ärztlichen Rat.</p></details></section>';
   return h;
 }
+var SL=[['b','Frühstück'],['l','Mittag'],['d','Abend']], planDay=null, pMsg='';
+function addShop(lns){var n=0;lns.forEach(function(t){if(!S.shop.some(function(x){return x.t.toLowerCase()===t.toLowerCase()&&!x.done})){S.shop.push({id:uid(),t:t,done:false});n++}});return n}
+function recById(id){return S.recipes.filter(function(r){return r.id===id})[0]}
+function planOf(i){return S.mealplan[i]||{}}
+function vPlanWeek(){
+  var pd=planDay==null?wd():planDay,pl=planOf(pd),opt=function(sel){return '<option value="">—</option>'+S.recipes.map(function(r){return '<option value="'+r.id+'"'+(sel===r.id?' selected':'')+'>'+esc(r.n)+'</option>'}).join('')};
+  return '<section class="card"><h2>'+ic('cal')+'Wochenplan <em>'+WD[pd]+'</em></h2>'
+   +'<div class="chips">'+WD.map(function(w,i){return '<button class="chip" data-a="plday" data-id="'+i+'" style="'+(i===pd?'background:var(--ac);color:var(--on)':'')+'">'+w.slice(0,2)+'</button>'}).join('')+'</div>'
+   +(S.recipes.length?SL.map(function(x){return '<label class="lb" style="grid-column:auto">'+x[1]+'<select data-ch="mp" data-slot="'+x[0]+'" aria-label="'+x[1]+'">'+opt(pl[x[0]])+'</select></label>'}).join('')
+     +'<button class="btn" data-a="planshop">Einkaufsliste aus dem Wochenplan</button><button class="btn ghost" data-a="planeat">Plan für '+WD[pd]+' als Mahlzeiten eintragen</button>':'<div class="empty">Lege zuerst Rezepte im Rezeptbuch an.</div>')
+   +(pMsg?'<div class="flash">'+esc(pMsg)+'</div>':'')+'</section>';
+}
+function vFoods(){
+  var F=S.foods;
+  return '<section class="card"><h2>'+ic('food')+'Meine Lebensmittel <em>'+F.length+'</em></h2>'
+   +(F.length?F.map(function(x){return '<div class="row"><div class="t">'+esc(x.n)+'<small>pro 100 g: '+x.k+' kcal · '+x.p+' g Protein · '+x.c+' g KH · '+x.f+' g Fett</small></div><button class="x" data-a="delfood" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join('')
+     +'<form data-f="foodmeal"><select class="h" name="id" aria-label="Lebensmittel">'+F.map(function(x){return '<option value="'+x.id+'">'+esc(x.n)+'</option>'}).join('')+'</select><input class="h" name="g" type="number" inputmode="numeric" min="1" placeholder="Gramm" required><button class="btn">Als Mahlzeit eintragen</button></form>':'<div class="empty">Speichere hier Lebensmittel mit Werten pro 100 g, dann trägst du sie mit der Menge ein.</div>')
+   +'<details class="kd"><summary>Lebensmittel hinzufügen</summary><form data-f="food"><input name="n" placeholder="Name, z. B. Haferflocken" required>'
+   +'<input class="q" name="k" type="number" inputmode="decimal" step="any" min="0" placeholder="kcal" required><input class="q" name="p" type="number" inputmode="decimal" step="any" min="0" placeholder="Protein g"><input class="q" name="c" type="number" inputmode="decimal" step="any" min="0" placeholder="KH g"><input class="q" name="f" type="number" inputmode="decimal" step="any" min="0" placeholder="Fett g">'
+   +'<button class="btn">Speichern</button></form><p class="hint">Alle Werte pro 100 g.</p></details></section>';
+}
+function vSupps(){
+  var d=day(),L=S.supps,n=L.filter(function(x){return d.supps[x.id]}).length;
+  return '<section class="card"><h2>'+ic('drop')+'Supplements <em>'+(L.length?n+' von '+L.length+' genommen':'keine')+'</em></h2>'
+   +L.map(function(x){return '<div class="row">'+chk(d.supps[x.id],'suppchk',x.id)+'<div class="t" style="'+(d.supps[x.id]?'text-decoration:line-through;opacity:.5':'')+'">'+esc(x.n)+'</div><button class="x" data-a="delsupp" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join('')
+   +'<form data-f="supp"><input name="n" placeholder="z. B. Kreatin, Vitamin D" required><button class="btn">Hinzufügen</button></form></section>';
+}
 function vEssen(){
   var d=day(), k=sumKcal(d), p=sumP(d), G=S.goals;
   var h='<section class="card"><h2>'+ic('food')+'Ernährung <em>Ziel '+G.kcal+' kcal · '+G.protein+' g</em></h2>'
    +'<div class="stat"><span>Kalorien</span>'+bar(k,G.kcal,k>G.kcal?'var(--bad)':'')+'<b>'+k+'</b></div>'
    +'<div class="stat"><span>Protein</span>'+bar(p,G.protein)+'<b>'+p+' g</b></div>'
-   +'<p class="hint">'+(k<=G.kcal?'Noch '+(G.kcal-k)+' kcal und '+Math.max(0,G.protein-p)+' g Protein bis zum Ziel.':'Du liegst '+(k-G.kcal)+' kcal über dem Ziel.')+'</p></section>';
+   +'<p class="hint">'+(k<=G.kcal?'Noch '+(G.kcal-k)+' kcal und '+Math.max(0,G.protein-p)+' g Protein bis zum Ziel.':'Du liegst '+(k-G.kcal)+' kcal über dem Ziel.')+' Heute: '+sumC(d)+' g Kohlenhydrate · '+sumF(d)+' g Fett.</p></section>';
   h+=vScan();
   var gl=G.glass||250;
   h+='<section class="card"><h2>'+ic('drop')+'Wasser <em>'+(d.water*gl)+' von '+(G.water*gl)+' ml</em></h2><div class="chips">';
@@ -639,11 +691,14 @@ function vEssen(){
   h+='</div><p class="hint">1 Glas = '+gl+' ml · '+d.water+' von '+G.water+' Gläsern ('+(d.water*gl)+' ml)</p></section>';
   h+='<section class="card"><h2>'+ic('food')+'Mahlzeiten</h2>'
    +(d.meals.length?d.meals.slice().sort(function(a,b){return a.time<b.time?-1:1}).map(function(m){
-      return '<div class="row"><span class="tm">'+m.time+'</span><div class="t">'+esc(m.n)+'<small>'+m.k+' kcal · '+m.p+' g Protein</small></div><button class="x" data-a="delmeal" data-id="'+m.id+'" aria-label="Löschen">×</button></div>';
+      return '<div class="row"><span class="tm">'+m.time+'</span><div class="t">'+esc(m.n)+'<small>'+m.k+' kcal · '+m.p+' g Protein'+(m.c||m.f?' · '+(m.c||0)+' g KH · '+(m.f||0)+' g Fett':'')+'</small></div><button class="x" data-a="delmeal" data-id="'+m.id+'" aria-label="Löschen">×</button></div>';
     }).join(''):'<div class="empty">Noch nichts eingetragen.</div>');
   if(S.recent.length)h+='<p class="hint">Zuletzt gegessen, tippen zum Hinzufügen</p><div class="chips">'+S.recent.map(function(r,i){return '<button class="chip" data-a="recent" data-id="'+i+'">'+esc(r.n)+' · '+r.k+'</button>'}).join('')+'</div>';
-  h+='<form data-f="meal"><input name="n" placeholder="Was hast du gegessen?" required><input class="q" name="k" type="number" inputmode="numeric" placeholder="kcal" required><input class="q" name="p" type="number" inputmode="numeric" placeholder="Protein g"><input class="q" name="time" type="time" value="'+nowHM()+'" required><button class="btn">Hinzufügen</button></form></section>';
+  h+='<form data-f="meal"><input name="n" placeholder="Was hast du gegessen?" required><input class="q" name="k" type="number" inputmode="numeric" placeholder="kcal" required><input class="q" name="p" type="number" inputmode="numeric" placeholder="Protein g"><input class="q" name="c" type="number" inputmode="numeric" placeholder="KH g"><input class="q" name="f" type="number" inputmode="numeric" placeholder="Fett g"><input class="h" name="time" type="time" value="'+nowHM()+'" required><button class="btn">Hinzufügen</button></form></section>';
+  h+=vFoods();
   h+=vRecipes();
+  h+=vPlanWeek();
+  h+=vSupps();
   h+=vPlan();
   h+=vBody();
   h+='<section class="card"><h2>'+ic('target')+'Tagesziele</h2><form data-f="goals">'
@@ -676,6 +731,12 @@ function gymHist(name,before){var o=[];Object.keys(S.days).sort().forEach(functi
 var rest=null, audioCtx=null;
 function beep(){try{if(!audioCtx)return;[0,0.35].forEach(function(t){var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=880;o.connect(g);g.connect(audioCtx.destination);g.gain.setValueAtTime(0.25,audioCtx.currentTime+t);o.start(audioCtx.currentTime+t);o.stop(audioCtx.currentTime+t+0.25)});if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}}
 function fmtMS(sec){return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')}
+function vCardio(){
+  var d=day(),tot=d.cardio.reduce(function(a,x){return a+x.min},0);
+  return '<section class="card"><h2>'+ic('clock')+'Cardio <em>'+(tot?tot+' Min':'nichts')+'</em></h2>'
+   +d.cardio.map(function(x){return '<div class="row"><div class="t">'+esc(x.t)+'<small>'+x.min+' Min'+(x.km?' · '+String(x.km).replace('.',',')+' km':'')+'</small></div><button class="x" data-a="delcardio" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join('')
+   +'<form data-f="cardio"><select class="h" name="t" aria-label="Art">'+['Laufen','Gehen','Radfahren','Schwimmen','Sonstiges'].map(function(t){return '<option>'+t+'</option>'}).join('')+'</select><input class="q" name="min" type="number" inputmode="numeric" min="1" placeholder="Min" required><input class="q" name="km" type="number" inputmode="decimal" step="0.1" min="0" placeholder="km"><button class="btn">Hinzufügen</button></form></section>';
+}
 function vGym(){
   var d=day(), g=gymToday(), n=g.ex.filter(function(e){return d.gym[e.id]}).length;
   var h='<section class="card"><h2>'+ic('dumbbell')+WD[wd()]+' <em>'+(g.ex.length?n+' von '+g.ex.length+' erledigt':'kein Training')+'</em></h2>'
@@ -685,6 +746,7 @@ function vGym(){
       var hi=gymHist(e.n,date),lastH=hi[hi.length-1],best=hi.reduce(function(m,x){return Math.max(m,x.kg)},0);
       return '<div class="row">'+chk(d.gym[e.id],'gymchk',e.id)+'<div class="t" style="'+(d.gym[e.id]?'text-decoration:line-through;opacity:.5':'')+'">'+esc(e.n)+'<small>'+e.s+' × '+e.r+(lastH?' · zuletzt '+lastH.kg+' kg ('+parse(lastH.k).toLocaleDateString('de-DE',{day:'numeric',month:'numeric'})+')'+(best>lastH.kg?' · Best '+best+' kg':''):'')+'</small></div><input class="kgi" type="number" step="0.5" inputmode="decimal" data-ch="exkg" data-id="'+e.id+'" value="'+(e.kg||0)+'" aria-label="kg für '+esc(e.n)+'"><button class="x" data-a="delex" data-id="'+e.id+'" aria-label="Löschen">×</button></div>';
     }).join(''):'<div class="empty">Ruhetag. Füge unten Übungen hinzu, wenn du trainieren willst.</div>')+'</section>';
+  h+=vCardio();
   h+=weekCard();
   h+='<section class="card"><h2>'+ic('dumbbell')+'Vorlage <em>'+WD[wd()]+'</em></h2><form data-f="gymtpl"><select name="t" aria-label="Vorlage">'+Object.keys(GT).map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'</select><button class="btn ghost">Vorlage übernehmen</button></form><p class="hint">Ersetzt den Plan für jeden '+WD[wd()]+'. Die Gewichte sind Startwerte, passe sie in der Liste an.</p></section>';
   h+='<section class="card"><h2>'+ic('clock')+'Pausentimer</h2>'
@@ -699,7 +761,42 @@ function dueLabel(t){
   var today=ds(new Date()), x=parse(t.due).toLocaleDateString('de-DE',{day:'numeric',month:'short'});
   return t.due<today&&!t.done?'<span class="over">überfällig · '+x+'</span>':'fällig '+x;
 }
-var uMsg='';
+var uMsg='', cardSess=null, noteF='';
+var BOXD=[1,2,4,8,16,32];
+function studiedFor(n){var t=0;Object.keys(S.days).forEach(function(k){(S.days[k].study||[]).forEach(function(e){if(e.n===n)t+=e.m})});return t}
+function vExams(){
+  var t=ds(new Date()),L=S.exams.slice().sort(function(a,b){return a.d<b.d?-1:1});
+  return '<section class="card"><h2>'+ic('target')+'Prüfungen <em>'+S.exams.filter(function(x){return x.d>=t}).length+' bevorstehend</em></h2>'
+   +(L.length?L.map(function(e){
+      var n=Math.round((parse(e.d)-parse(t))/864e5),done=studiedFor(e.n),left=Math.max(0,Math.round(e.h*60)-done),plan=n>0&&e.h?' · Lernplan: noch '+fmtM(left)+', etwa '+fmtM(Math.ceil(left/n))+' pro Tag':'';
+      return '<div class="row"><div class="t" style="'+(n<0?'opacity:.5':'')+'">'+esc(e.n)+'<small>'+parse(e.d).toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'})+' · '+(n<0?'vorbei':n===0?'heute':n===1?'morgen':'in '+n+' Tagen')+(n>=0?plan:'')+'</small>'+(e.h&&n>=0?bar(done,Math.round(e.h*60)):'')+'</div><button class="x" data-a="delexam" data-id="'+e.id+'" aria-label="Löschen">×</button></div>';
+     }).join(''):'<div class="empty">Keine Prüfungen eingetragen.</div>')
+   +'<form data-f="exam"><input name="n" list="subj-l" placeholder="Fach" required><datalist id="subj-l">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><input class="h" name="d" type="date" required aria-label="Datum"><input class="h" name="h" type="number" inputmode="decimal" step="0.5" min="0" placeholder="Lernziel in Std"><button class="btn">Prüfung hinzufügen</button></form><p class="hint">Die Lernzeit zählt für das Fach mit demselben Namen (wähle beim Lernen das Fach aus).</p></section>';
+}
+function dueCards(){var t=ds(new Date());return S.cards.filter(function(c){return c.due<=t}).sort(function(a,b){return a.due<b.due?-1:1})}
+function vCards(){
+  var due=dueCards(),h='<section class="card"><h2>'+ic('book')+'Karteikarten <em>'+due.length+' fällig · '+S.cards.length+' gesamt</em></h2>';
+  if(cardSess&&due.length){
+    var c=due[0];
+    h+='<div class="flash" style="padding:18px"><small class="tag" style="margin-bottom:8px">'+esc(c.deck||'Ohne Fach')+'</small><div style="font-size:19px;line-height:1.35;white-space:pre-wrap">'+esc(c.q)+'</div>'+(cardSess.show?'<hr style="border:0;border-top:1px solid var(--line);margin:14px 0"><div style="font-size:19px;line-height:1.35;white-space:pre-wrap;font-weight:500">'+esc(c.a)+'</div>':'')+'</div>'
+     +(cardSess.show?'<div class="chips" style="flex-wrap:nowrap"><button class="btn ghost" style="flex:1" data-a="cardno">Nicht gewusst</button><button class="btn" style="flex:1" data-a="cardok">Gewusst</button></div>':'<button class="btn" data-a="cardshow">Antwort zeigen</button>')
+     +'<button class="btn ghost" data-a="cardend">Beenden</button>';
+  }else{
+    if(cMsgC)h+='<div class="flash">'+esc(cMsgC)+'</div>';
+    h+=due.length?'<button class="btn" data-a="cardstart">Lernen starten ('+due.length+' fällig)</button>':(S.cards.length?'<div class="empty">Heute ist alles gelernt.</div>':'<div class="empty">Noch keine Karten.</div>');
+  }
+  h+='<details class="kd"><summary>Neue Karte</summary><form data-f="card"><input name="deck" list="subj-l2" placeholder="Fach (optional)"><datalist id="subj-l2">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><textarea name="q" placeholder="Frage" required></textarea><textarea name="a" placeholder="Antwort" required></textarea><button class="btn">Karte speichern</button></form></details>';
+  if(S.cards.length)h+='<details class="kd"><summary>Alle Karten ('+S.cards.length+')</summary>'+S.cards.map(function(c){return '<div class="row"><div class="t">'+esc(c.q)+'<small>'+esc(c.deck||'Ohne Fach')+' · Stufe '+c.box+' · nächstes Mal '+parse(c.due).toLocaleDateString('de-DE',{day:'numeric',month:'short'})+'</small></div><button class="x" data-a="delcard" data-id="'+c.id+'" aria-label="Löschen">×</button></div>'}).join('')+'</details>';
+  return h+'</section>';
+}
+var cMsgC='';
+function vNotes(){
+  var L=S.notes.filter(function(x){return !noteF||x.n===noteF});
+  return '<section class="card"><h2>'+ic('book')+'Notizen <em>'+L.length+'</em></h2>'
+   +'<select data-ch="nfilter" aria-label="Fach filtern"><option value="">Alle Fächer</option>'+subjNames().map(function(x){return '<option'+(noteF===x?' selected':'')+'>'+esc(x)+'</option>'}).join('')+'</select>'
+   +(L.length?L.map(function(x){return '<div class="row" style="align-items:flex-start"><div class="t"><small>'+esc(x.n||'Ohne Fach')+' · '+parse(x.d).toLocaleDateString('de-DE',{day:'numeric',month:'short'})+'</small><div style="white-space:pre-wrap">'+esc(x.t)+'</div></div><button class="x" data-a="delnote" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join(''):'<div class="empty">Keine Notizen.</div>')
+   +'<form data-f="note"><input name="n" list="subj-l3" placeholder="Fach (optional)" value="'+esc(noteF)+'"><datalist id="subj-l3">'+subjNames().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist><textarea name="t" placeholder="Notiz" required></textarea><button class="btn">Notiz speichern</button></form></section>';
+}
 function vUni(){
   var cl=classesToday();
   var h=vLern()+vSubj()+'<section class="card"><h2>'+ic('book')+WD[wd()]+' <em>'+cl.length+' Termine</em></h2>'
@@ -712,6 +809,11 @@ function vUni(){
   h+='<section class="card"><h2>'+ic('calc')+'Noten <em>'+(GR.length?'Ø '+ga.toFixed(2).replace('.',',')+' · '+gc+' CP':'noch keine')+'</em></h2>'
    +GR.map(function(g){return '<div class="row"><span class="tm">'+g.g.toFixed(1).replace('.',',')+'</span><div class="t">'+esc(g.n)+'<small>'+g.cr+' CP</small></div><button class="x" data-a="delgrade" data-id="'+g.id+'" aria-label="Löschen">×</button></div>'}).join('')
    +'<form data-f="grade"><input name="n" placeholder="Fach" required><input class="h" name="g" type="number" step="0.1" min="1" max="5" inputmode="decimal" placeholder="Note" required><input class="h" name="cr" type="number" min="1" inputmode="numeric" placeholder="Credits" required><button class="btn">Note hinzufügen</button></form><p class="hint">Der Durchschnitt ist nach Credits gewichtet.</p></section>';
+  h+='<section class="card"><h2>'+ic('target')+'Semesterziele</h2>'
+   +'<div class="stat"><span>Credits</span>'+bar(gc,S.sem.cr)+'<b>'+gc+(S.sem.cr?' / '+S.sem.cr:'')+'</b></div>'
+   +'<div class="stat"><span>Note</span>'+bar(S.sem.grade&&ga?Math.max(0,6-ga):0,S.sem.grade?6-S.sem.grade:1)+'<b>'+(ga?ga.toFixed(2).replace('.',','):'–')+(S.sem.grade?' / '+String(S.sem.grade).replace('.',','):'')+'</b></div>'
+   +'<form data-f="sem"><input class="h" name="cr" type="number" inputmode="numeric" min="0" placeholder="Credits-Ziel" value="'+(S.sem.cr||'')+'"><input class="h" name="grade" type="number" inputmode="decimal" step="0.1" min="1" max="5" placeholder="Notenziel" value="'+(S.sem.grade||'')+'"><button class="btn ghost">Ziele speichern</button></form></section>';
+  h+=vExams()+vCards()+vNotes();
   h+='<section class="card"><h2>'+ic('clock')+'Erinnerungen</h2><button class="btn" data-a="uniics">Kalender-Datei laden</button>'+(uMsg?'<div class="flash">'+esc(uMsg)+'</div>':'')+'<p class="hint">Enthält deinen Stundenplan (15 Minuten vorher, 20 Wochen lang) und alle offenen Fristen (am Vortag um 9 Uhr). Öffne die Datei auf dem iPhone und tippe auf „Alle hinzufügen“.</p></section>';
   h+='<section class="card"><h2>'+ic('cal')+'Stundenplan</h2>';
   WD.forEach(function(w,i){
@@ -745,7 +847,7 @@ function badgeList(){
    ['Proteinziel erreicht',ds_.some(function(d){return sumP(d)>=G.protein})],
    ['Erstes Training',gy>=1],['10 Trainings',gy>=10],
    ['100 Tesbih',ds_.some(function(d){return d.tas>=100})],
-   ['5 Rezepte',S.recipes.length>=5]
+   ['5 Rezepte',S.recipes.length>=5],['100 Seiten Koran',quranTotal()>=100],['Koran einmal gelesen',quranTotal()>=604]
   ];
 }
 function exportText(){var o=JSON.parse(JSON.stringify(S));delete o.apiKey;delete o.timer;return JSON.stringify(o)}
@@ -755,12 +857,22 @@ function importText(t){
   if(!confirm('Alle aktuellen Daten durch die Sicherung ersetzen?'))return 'Abgebrochen.';
   var d=defaults();for(var k in d)if(!(k in o))o[k]=d[k];o.apiKey=S.apiKey||'';S=o;save();return 'Sicherung eingespielt.';
 }
+function sleepMin(sl){if(!sl)return 0;return (mins(sl.wake)-mins(sl.bed)+1440)%1440}
+function vSleep(){
+  var d=day(),sl=d.sleep,dt=parse(date).toLocaleDateString('de-DE',{day:'numeric',month:'short'});
+  return '<section class="card"><h2>'+ic('clock')+'Schlaf <em>Nacht zum '+dt+'</em></h2>'
+   +(sl?'<div class="kh"><div><b>'+fmtM(sleepMin(sl))+'</b><span>geschlafen</span></div><div><b>'+sl.bed+'</b><span>ins Bett · auf um '+sl.wake+'</span></div></div>':'<p class="hint" style="margin:0">Für diese Nacht ist noch nichts eingetragen.</p>')
+   +'<form data-f="sleep"><label class="lb h">Ins Bett<input name="bed" type="time" value="'+(sl?sl.bed:'23:00')+'" required></label><label class="lb h">Aufgestanden<input name="wake" type="time" value="'+(sl?sl.wake:'07:00')+'" required></label><button class="btn">Speichern</button></form></section>';
+}
 function vMehr(){
   var keys=lastDays(rangeN),G=S.goals,h='';
   h+='<section class="card"><h2>'+ic('cal')+'Übersicht</h2><div class="chips">'+[7,30].map(function(n){return '<button class="chip" data-a="range" data-id="'+n+'" style="'+(rangeN===n?'background:var(--fg);color:var(--bg)':'')+'">'+n+' Tage</button>'}).join('')+'</div><p class="hint">Schwarze Balken: Ziel erreicht.</p></section>';
   h+=chartCard('Kalorien','food',keys,sumKcal,G.kcal*0.9,' kcal');
   h+=chartCard('Lernzeit','clock',keys,sumS,G.study,' Min');
   h+=chartCard('Wasser','drop',keys,function(x){return x.water||0},G.water,' Gl.');
+  h+=chartCard('Koran','book',keys,function(x){return x.quran||0},S.quranGoal||5,' S.');
+  h+=chartCard('Schlaf','clock',keys,function(x){return sleepMin(x.sleep)},420,' Min');
+  h+=chartCard('Cardio','dumbbell',keys,function(x){return (x.cardio||[]).reduce(function(a,c){return a+c.min},0)},30,' Min');
   h+=chartCard('Training','dumbbell',keys,function(x){return x.gym?Object.keys(x.gym).filter(function(i){return x.gym[i]}).length:0},1,' Üb.');
   var W=S.weights.slice().sort(function(a,b){return a.d<b.d?-1:1}),wl=W[W.length-1],wf=W.filter(function(x){return x.d>=keys[0]})[0]||W[0];
   h+='<section class="card"><h2>'+ic('target')+'Gewicht <em>'+(wl?wl.kg.toFixed(1).replace('.',',')+' kg':'noch keiner')+'</em></h2>'
@@ -775,6 +887,13 @@ function vMehr(){
   h+='<section class="card"><h2>'+ic('target')+'Farbe</h2><div class="chips">'+Object.keys(ACC).map(function(k){return '<button class="sw'+(S.accent===k?' on':'')+'" data-a="accent" data-id="'+k+'" style="background:'+(ACC[k][1]||'var(--fg)')+'" aria-label="'+ACC[k][0]+'"></button>'}).join('')+'</div><p class="hint">Gewählt: '+ACC[S.accent][0]+'</p></section>';
   var HO=heuteOrder();
   h+='<section class="card"><h2>'+ic('cal')+'Heute-Seite anpassen</h2>'+HO.map(function(k,i){return '<div class="row">'+chk((S.heute.hidden||[]).indexOf(k)<0,'htoggle',k)+'<div class="t">'+HL[k]+'</div><button class="x" data-a="hup" data-id="'+k+'" aria-label="Nach oben"'+(i?'':' disabled style="opacity:.3"')+'>▲</button><button class="x" data-a="hdown" data-id="'+k+'" aria-label="Nach unten"'+(i<HO.length-1?'':' disabled style="opacity:.3"')+'>▼</button></div>'}).join('')+'<p class="hint">Haken = sichtbar. Mit den Pfeilen änderst du die Reihenfolge.</p></section>';
+  h+='<section class="card"><h2>'+ic('target')+'Gewohnheiten <em>'+S.habits.length+'</em></h2>'
+   +(S.habits.length?S.habits.map(function(x){var st=habitStreak(x.id);return '<div class="row"><div class="t">'+esc(x.n)+(st?'<small>Serie: '+st+' '+(st===1?'Tag':'Tage')+'</small>':'')+'</div><button class="x" data-a="delhabit" data-id="'+x.id+'" aria-label="Löschen">×</button></div>'}).join(''):'<div class="empty">Lege tägliche Gewohnheiten an, zum Beispiel Lesen oder Spazieren. Sie erscheinen auf der Heute-Seite zum Abhaken.</div>')
+   +'<form data-f="habit"><input name="n" placeholder="Neue Gewohnheit" required><button class="btn">Hinzufügen</button></form></section>';
+  h+='<section class="card"><h2>'+ic('clock')+'Kompakt-Ansicht</h2><button class="btn ghost" data-a="tab" data-id="kompakt">Öffnen</button><p class="hint">Eine schlanke Seite mit den wichtigsten Zahlen. Tipp: Hänge „?kompakt“ an die Adresse der App, um sie direkt zu öffnen.</p></section>';
+  h+=vSleep();
+  h+=vHijri();
+  h+=vZakat();
   var B=badgeList();
   h+='<section class="card"><h2>'+ic('target')+'Abzeichen <em>'+B.filter(function(b){return b[1]}).length+' von '+B.length+'</em></h2><div class="bdg">'+B.map(function(b){return '<span class="bd'+(b[1]?' on':'')+'">'+esc(b[0])+'</span>'}).join('')+'</div></section>';
   h+='<section class="card"><h2>'+ic('sun')+'Ramadan</h2><button class="btn ghost" data-a="ramadan">'+(S.ramadan?'Ramadan-Modus ausschalten':'Ramadan-Modus einschalten')+'</button><p class="hint">Zeigt auf der Heute-Seite Sahur-Ende und Iftar mit Countdown.</p></section>';
@@ -861,6 +980,66 @@ function vQibla(){
    +(compassOn?'':'<button class="btn" data-a="compass">Kompass starten</button>')
    +'<p class="hint">'+(compassOn?'Drehe dich, bis der Pfeil nach oben zeigt. Das Quadrat ist die Kaaba. ':'')+'Ohne Kompass zeigt der Pfeil die Richtung von Norden aus. Halte das Handy flach und weit weg von Metall. Berechnet für '+esc(S.loc.city)+'.</p></section>';
 }
+function quranTotal(){var t=0;Object.keys(S.days).forEach(function(k){t+=S.days[k].quran||0});return t}
+function vQuran(){
+  var d=day(),g=S.quranGoal||5,tot=quranTotal(),kh=Math.floor(tot/604);
+  return '<section class="card"><h2>'+ic('book')+'Koran lesen <em>Ziel '+g+' Seiten</em></h2>'
+   +'<div class="tas">'+(d.quran||0)+'<span style="font-size:24px;color:var(--muted);font-weight:500"> Seiten</span></div>'+bar(d.quran||0,g)
+   +'<div class="chips"><button class="chip" data-a="qpage" data-id="-1">−1</button><button class="chip" data-a="qpage" data-id="1">+1 Seite</button><button class="chip" data-a="qpage" data-id="5">+5 Seiten</button></div>'
+   +'<p class="hint">Gesamt '+tot+' Seiten'+(kh?' · '+kh+'× komplett gelesen':'')+' · aktueller Durchgang: '+(tot%604)+' von 604 Seiten (Standard-Mushaf).</p>'
+   +'<form data-f="qgoal"><input class="h" name="g" type="number" inputmode="numeric" min="1" max="100" value="'+g+'" aria-label="Seiten pro Tag"><button class="btn ghost h">Ziel speichern</button></form></section>';
+}
+var DUA=[
+['Beim Aufwachen','الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ','Elhamdülillahi lledhi ahjana ba\'de ma amatena ve ileyhi n-nushur','Lob sei Allah, der uns wieder zum Leben erweckt hat, nachdem Er uns sterben ließ, und zu Ihm ist die Auferstehung.','Bukhari 6312'],
+['Vor dem Schlafen','بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا','Bismike Allahumme emutu ve ahja','In Deinem Namen, o Allah, sterbe ich und lebe ich.','Bukhari 6324'],
+['Am Morgen','اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ','Allahumme bike asbahna ve bike emseyna ve bike nahja ve bike nemutu ve ileyke n-nushur','O Allah, durch Dich erreichen wir den Morgen und durch Dich den Abend, durch Dich leben wir und durch Dich sterben wir, und zu Dir ist die Auferstehung.','Tirmidhi 3391'],
+['Am Abend','اللَّهُمَّ بِكَ أَمْسَيْنَا وَبِكَ أَصْبَحْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ','Allahumme bike emseyna ve bike asbahna ve bike nahja ve bike nemutu ve ileyke l-masir','O Allah, durch Dich erreichen wir den Abend und durch Dich den Morgen, durch Dich leben wir und durch Dich sterben wir, und zu Dir ist die Heimkehr.','Tirmidhi 3391'],
+['Vor dem Essen','بِسْمِ اللَّهِ','Bismillah','Im Namen Allahs.','Abu Dawud 3767'],
+['Nach dem Essen','الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنَا وَسَقَانَا وَجَعَلَنَا مُسْلِمِينَ','Elhamdülillahi lledhi at\'amena ve sekana ve ja\'alena muslimin','Lob sei Allah, der uns gespeist und getränkt und uns zu Muslimen gemacht hat.','Abu Dawud 3850'],
+['Beim Verlassen des Hauses','بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ','Bismillahi tevekkeltu ala llahi ve la havle ve la kuvvete illa billah','Im Namen Allahs, ich vertraue auf Allah. Es gibt keine Macht und keine Kraft außer bei Allah.','Abu Dawud 5095'],
+['Beim Betreten des Hauses','بِسْمِ اللَّهِ وَلَجْنَا وَبِسْمِ اللَّهِ خَرَجْنَا وَعَلَى رَبِّنَا تَوَكَّلْنَا','Bismillahi velejna ve bismillahi haracna ve ala rabbina tevekkelna','Im Namen Allahs treten wir ein, im Namen Allahs gehen wir hinaus, und auf unseren Herrn vertrauen wir.','Abu Dawud 5096'],
+['Beim Betreten der Moschee','اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ','Allahumme ftah li ebvabe rahmetik','O Allah, öffne mir die Tore Deiner Barmherzigkeit.','Muslim 713'],
+['Beim Verlassen der Moschee','اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ','Allahumme inni es\'eluke min fadlik','O Allah, ich bitte Dich um Deine Huld.','Muslim 713'],
+['Auf Reisen','سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ','Subhane lledhi sehhara lena hadha ve ma kunna lehu mukrinin ve inna ila rabbina le munkalibun','Gepriesen sei Der, der uns dies dienstbar gemacht hat, während wir dazu nicht fähig gewesen wären. Und wir kehren zu unserem Herrn zurück.','Koran 43:13-14'],
+['Um das Gute in beiden Welten','رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ','Rabbena atina fi d-dunya hasenetev ve fi l-ahirati hasenetev ve qina azabe n-nar','Unser Herr, gib uns im Diesseits Gutes und im Jenseits Gutes und bewahre uns vor der Strafe des Feuers.','Koran 2:201'],
+['Um mehr Wissen','رَبِّ زِدْنِي عِلْمًا','Rabbi zidni ilma','Mein Herr, mehre mein Wissen.','Koran 20:114'],
+['In Not und Sorge','لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ','La ilahe illa ente subhaneke inni kuntu mine z-zalimin','Es gibt keinen Gott außer Dir, gepriesen seist Du. Ich gehörte zu den Ungerechten.','Koran 21:87'],
+['Im Vertrauen auf Allah','حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ','Hasbunallahu ve ni\'me l-vekil','Allah genügt uns, und welch ein vortrefflicher Sachwalter.','Koran 3:173'],
+['Um Vergebung','رَبَّنَا ظَلَمْنَا أَنفُسَنَا وَإِن لَّمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ','Rabbena zalemna enfusena ve in lem tagfir lena ve terhamna le nekunenne mine l-hasirin','Unser Herr, wir haben uns selbst Unrecht getan. Wenn Du uns nicht vergibst und Dich unser erbarmst, gehören wir bestimmt zu den Verlierern.','Koran 7:23']
+];
+function vDuas(){
+  return '<section class="card"><h2>'+ic('mosque')+'Dua-Sammlung <em>'+DUA.length+' Bittgebete</em></h2>'
+   +DUA.map(function(x){return '<details class="kd"><summary>'+esc(x[0])+'</summary><p dir="rtl" lang="ar" style="margin:0 0 10px;font-size:26px;line-height:1.7;text-align:right">'+x[1]+'</p><p style="margin:0 0 8px;font-style:italic;color:var(--muted)">'+esc(x[2])+'</p><p style="margin:0 0 6px">'+esc(x[3])+'</p><p class="hint" style="margin:0">'+esc(x[4])+' · sinngemäße Übersetzung</p></details>'}).join('')
+   +'<p class="hint">Prüfe Text und Aussprache bei Bedarf mit einer Quelle deines Vertrauens.</p></section>';
+}
+var HM=['Muharram','Safar','Rabi al-awwal','Rabi ath-thani','Dschumada al-ula','Dschumada ath-thaniya','Radschab','Schaban','Ramadan','Schawwal','Dhul-Qada','Dhul-Hiddscha'];
+var HI=[[1,1,'Islamisches Neujahr'],[1,10,'Aschura'],[9,1,'Beginn des Ramadan'],[9,27,'Lailat al-Qadr (27. Ramadan, nach Überlieferung)'],[10,1,'Eid al-Fitr'],[12,9,'Tag von Arafa'],[12,10,'Eid al-Adha']];
+function hijri(dt){try{var o={};new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn',{day:'numeric',month:'numeric',year:'numeric'}).formatToParts(dt).forEach(function(x){if(x.type==='day'||x.type==='month'||x.type==='year')o[x.type]=+x.value});return o.day&&o.month?o:null}catch(e){return null}}
+function hijriStr(o){return o?o.day+'. '+HM[o.month-1]+' '+o.year:''}
+function nextIslamic(n){
+  var out=[],t0=new Date();t0.setHours(12,0,0,0);
+  for(var i=0;i<400&&out.length<n;i++){var d=new Date(t0);d.setDate(d.getDate()+i);var o=hijri(d);if(!o)return out;HI.forEach(function(e){if(e[0]===o.month&&e[1]===o.day&&out.length<n)out.push({n:e[2],i:i,d:d})})}
+  return out;
+}
+function vHijri(){
+  var o=hijri(new Date()),nx=nextIslamic(4);
+  return '<section class="card"><h2>'+ic('cal')+'Islamischer Kalender <em>'+(o?hijriStr(o):'nicht verfügbar')+'</em></h2>'
+   +nx.map(function(e){return '<div class="row"><span class="tm" style="min-width:64px">'+(e.i===0?'heute':e.i===1?'morgen':'in '+e.i+' Tagen')+'</span><div class="t">'+esc(e.n)+'<small>'+e.d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+'</small></div></div>'}).join('')
+   +'<p class="hint">Nach dem Umm-al-Qura-Kalender. Der echte Tag hängt von der Mondsichtung ab und kann um einen Tag abweichen.</p></section>';
+}
+function zakatCalc(Z){
+  var net=(Z.cash||0)+(Z.gold||0)+(Z.inv||0)+(Z.recv||0)-(Z.debt||0),nis=85*(Z.gp||0);
+  return {net:net,nis:nis,due:nis>0&&net>=nis?net*0.025:0};
+}
+function eur(x){return x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}
+function vZakat(){
+  var Z=S.zakat||{},c=S.zakat?zakatCalc(Z):null,f=function(n,l,v){return '<label class="lb h">'+l+'<input name="'+n+'" type="number" inputmode="decimal" step="any" min="0" value="'+(v||'')+'" placeholder="0"></label>'};
+  return '<section class="card"><h2>'+ic('calc')+'Zakat-Rechner'+(c?' <em>'+(c.due?eur(c.due):'unter dem Nisab')+'</em>':'')+'</h2>'
+   +(c?'<div class="kh"><div><b>'+eur(c.net)+'</b><span>Zakat-pflichtiges Vermögen</span></div><div><b>'+eur(c.nis)+'</b><span>Nisab (85 g Gold)</span></div></div>'+(c.due?'<p class="hint">Zakat fällig: 2,5 % = '+eur(c.due)+'</p>':'<p class="hint">Dein Vermögen liegt unter dem Nisab, es ist keine Zakat fällig.</p>'):'')
+   +'<details class="kd"'+(c?'':' open')+'><summary>'+(c?'Neu berechnen':'Berechnen')+'</summary><form data-f="zakat">'
+   +f('cash','Bargeld und Konten (€)',Z.cash)+f('gold','Gold und Silber, Wert (€)',Z.gold)+f('inv','Anlagen und Handelsware (€)',Z.inv)+f('recv','Forderungen (€)',Z.recv)+f('debt','Schulden (€)',Z.debt)+f('gp','Goldpreis pro Gramm (€)',Z.gp)
+   +'<button class="btn">Berechnen</button></form><p class="hint">Gib den aktuellen Goldpreis selbst ein. Zakat wird fällig, wenn dein Vermögen über dem Nisab liegt und ein Mondjahr lang besteht. Das ist eine Hilfe, im Zweifel frage einen Gelehrten.</p></details></section>';
+}
 function vGebet(){
   var d=day(), T=pt(date), L=S.loc;
   var custom=!CITIES[L.city];
@@ -870,6 +1049,8 @@ function vGebet(){
    }).join('')+'<p class="hint">Güneş '+T.sunrise+' · berechnet für '+esc(L.city)+''+'</p></section>';
   var TB=['Sübhanallah','Elhamdülillah','Allahu Ekber'], tn=d.tas%99, tp=Math.floor(tn/33), tc=tn%33;
   h+='<section class="card"><h2>'+ic('mosque')+'Tesbih <em>'+TB[tp]+' · '+(tp+1)+'/3</em></h2><div class="tas">'+tc+'<span style="font-size:24px;color:var(--muted);font-weight:500"> / 33</span></div>'+bar(tc,33)+'<button class="tasb" data-a="tas">'+TB[tp]+'</button><p class="hint">Nach 33 wechselt es automatisch: Sübhanallah, Elhamdülillah, Allahu Ekber. Gesamt heute: '+d.tas+'</p><button class="btn ghost" data-a="tasreset">Zurücksetzen</button></section>';
+  h+=vQuran();
+  h+=vDuas();
   h+=vQibla();
   h+=vKaza();
   var NF=S.notif, sup=('Notification' in window), perm=sup?Notification.permission:'denied';
@@ -892,10 +1073,11 @@ function vGebet(){
 /* ---------- render ---------- */
 function render(){
   var dt=parse(date);
-  document.getElementById('hs').textContent=isToday()?greet():dt.toLocaleDateString('de-DE',{weekday:'long'});
+  var hj=hijri(dt);
+  document.getElementById('hs').textContent=(isToday()?greet():dt.toLocaleDateString('de-DE',{weekday:'long'}))+(hj?' · '+hj.day+'. '+HM[hj.month-1]:'');
   document.getElementById('ht').textContent=dt.toLocaleDateString('de-DE',isToday()?{weekday:'long',day:'numeric',month:'long'}:{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('today').hidden=isToday();
-  document.getElementById('m').innerHTML={heute:vHeute,essen:vEssen,gym:vGym,uni:vUni,gebet:vGebet,mehr:vMehr}[tab]();
+  document.getElementById('m').innerHTML={heute:vHeute,essen:vEssen,gym:vGym,uni:vUni,gebet:vGebet,mehr:vMehr,kompakt:vKompakt}[tab]();
   drawNav();
 }
 function shift(n){var d=parse(date);d.setDate(d.getDate()+n);date=ds(d);render()}
@@ -910,7 +1092,7 @@ document.addEventListener('click',function(ev){
   if(a==='pray')d.prayers[id]=!d.prayers[id];
   else if(a==='water')d.water=d.water===+id?+id-1:+id;
   else if(a==='delmeal')d.meals=d.meals.filter(function(m){return m.id!==id});
-  else if(a==='recent'){var r=S.recent[+id];d.meals.push({id:uid(),n:r.n,k:r.k,p:r.p,time:nowHM()})}
+  else if(a==='recent'){var r=S.recent[+id];d.meals.push({id:uid(),n:r.n,k:r.k,p:r.p,c:r.c||0,f:r.f||0,time:nowHM()})}
   else if(a==='gymchk'){var ge=gymToday().ex.filter(function(e){return e.id===id})[0];d.gym[id]=!d.gym[id];if(ge){if(d.gym[id])d.gymlog[ge.n]={kg:ge.kg,s:ge.s,r:ge.r};else delete d.gymlog[ge.n]}}
   else if(a==='rest'){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume()}catch(e){}rest={end:Date.now()+(+id)*1000}}
   else if(a==='restoff')rest=null;
@@ -931,7 +1113,7 @@ document.addEventListener('click',function(ev){
   else if(a==='delstudy')d.study=d.study.filter(function(s){return s.id!==id});
   else if(a==='tas')d.tas++;
   else if(a==='tasreset')d.tas=0;
-  else if(a==='recipemeal'){var rc=S.recipes.filter(function(r){return r.id===id})[0];if(rc){d.meals.push({id:uid(),n:rc.n,k:rc.k,p:rc.p||0,time:nowHM()});S.recent=[{n:rc.n,k:rc.k,p:rc.p||0}].concat(S.recent.filter(function(r){return r.n!==rc.n})).slice(0,6);rMsg='Zum Tag hinzugefügt: '+rc.n}}
+  else if(a==='recipemeal'){var rc=S.recipes.filter(function(r){return r.id===id})[0];if(rc){d.meals.push({id:uid(),n:rc.n,k:rc.k,p:rc.p||0,c:rc.c||0,f:rc.f||0,time:nowHM()});S.recent=[{n:rc.n,k:rc.k,p:rc.p||0,c:rc.c||0,f:rc.f||0}].concat(S.recent.filter(function(r){return r.n!==rc.n})).slice(0,6);rMsg='Zum Tag hinzugefügt: '+rc.n}}
   else if(a==='editrecipe'){rEdit=S.recipes.filter(function(r){return r.id===id})[0]||null;rMsg=''}
   else if(a==='canceledit')rEdit=null;
   else if(a==='delrecipe'){S.recipes=S.recipes.filter(function(r){return r.id!==id});if(rEdit&&rEdit.id===id)rEdit=null}
@@ -952,6 +1134,23 @@ document.addEventListener('click',function(ev){
   else if(a==='shopclear')S.shop=S.shop.filter(function(x){return !x.done});
   else if(a==='delweight')S.weights=S.weights.filter(function(x){return x.id!==id});
   else if(a==='range')rangeN=+id;
+  else if(a==='habchk')d.habits[id]=!d.habits[id];
+  else if(a==='delhabit')S.habits=S.habits.filter(function(x){return x.id!==id});
+  else if(a==='delexam')S.exams=S.exams.filter(function(x){return x.id!==id});
+  else if(a==='delnote')S.notes=S.notes.filter(function(x){return x.id!==id});
+  else if(a==='delcard')S.cards=S.cards.filter(function(x){return x.id!==id});
+  else if(a==='cardstart'){cardSess={show:false};cMsgC=''}
+  else if(a==='cardshow'&&cardSess)cardSess.show=true;
+  else if(a==='cardend'){cardSess=null}
+  else if((a==='cardok'||a==='cardno')&&cardSess){var cd0=dueCards()[0];if(cd0){cd0.box=a==='cardok'?Math.min(6,cd0.box+1):1;var nd=new Date();nd.setDate(nd.getDate()+BOXD[cd0.box-1]);cd0.due=ds(nd)}cardSess.show=false;if(!dueCards().length){cardSess=null;cMsgC='Alle fälligen Karten gelernt.'}}
+  else if(a==='plday')planDay=+id;
+  else if(a==='planshop'){var pn=0;for(var pi=0;pi<7;pi++)SL.forEach(function(x){var rc2=recById(planOf(pi)[x[0]]);if(rc2)pn+=addShop(lines(rc2.ing))});pMsg=pn+' Zutaten auf der Einkaufsliste'}
+  else if(a==='planeat'){var pe=0,pp2=planDay==null?wd():planDay;SL.forEach(function(x){var rc3=recById(planOf(pp2)[x[0]]);if(rc3){d.meals.push({id:uid(),n:rc3.n,k:rc3.k,p:rc3.p||0,c:rc3.c||0,f:rc3.f||0,time:nowHM()});pe++}});pMsg=pe?pe+' Mahlzeiten eingetragen':'Für diesen Tag ist nichts geplant'}
+  else if(a==='delfood')S.foods=S.foods.filter(function(x){return x.id!==id});
+  else if(a==='suppchk')d.supps[id]=!d.supps[id];
+  else if(a==='delsupp')S.supps=S.supps.filter(function(x){return x.id!==id});
+  else if(a==='delcardio')d.cardio=d.cardio.filter(function(x){return x.id!==id});
+  else if(a==='qpage')d.quran=Math.max(0,(d.quran||0)+(+id));
   else if(a==='snooze')S.snooze=Date.now()+3*864e5;
   else if(a==='accent'&&ACC[id]){S.accent=id;applyAccent()}
   else if(a==='htoggle'){var hh=S.heute.hidden||(S.heute.hidden=[]),hi2=hh.indexOf(id);if(hi2>=0)hh.splice(hi2,1);else hh.push(id)}
@@ -975,6 +1174,8 @@ document.addEventListener('change',function(ev){
   }
   else if(c==='exkg'){var xe=gymToday().ex.filter(function(e){return e.id===el.dataset.id})[0];if(xe){xe.kg=Math.max(0,+el.value||0);var dd=day();if(dd.gym[xe.id])dd.gymlog[xe.n]={kg:xe.kg,s:xe.s,r:xe.r}}}
   else if(c==='subj')S.subj=el.value;
+  else if(c==='mp'){var mpd=planDay==null?wd():planDay,mpo=S.mealplan[mpd]||(S.mealplan[mpd]={});mpo[el.dataset.slot]=el.value}
+  else if(c==='nfilter')noteF=el.value;
   else if(c==='nbefore')S.notif.before=+el.value;
   else if(c==='method')L.method=el.value;
   else if(c==='asr')L.asr=+el.value;
@@ -999,9 +1200,9 @@ document.addEventListener('submit',function(ev){
   var f=ev.target,k=f.dataset.f;if(!k)return;
   var v=Object.fromEntries(new FormData(f)),d=day();
   if(k==='meal'){
-    var m={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,time:v.time};
+    var m={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,c:+v.c||0,f:+v.f||0,time:v.time};
     d.meals.push(m);
-    S.recent=[{n:m.n,k:m.k,p:m.p}].concat(S.recent.filter(function(r){return r.n!==m.n})).slice(0,6);
+    S.recent=[{n:m.n,k:m.k,p:m.p,c:m.c,f:m.f}].concat(S.recent.filter(function(r){return r.n!==m.n})).slice(0,6);
   }
   else if(k==='goals'){S.goals={kcal:+v.kcal||2000,protein:+v.protein||100,water:Math.min(14,Math.max(1,+v.water||8)),glass:Math.min(1000,Math.max(100,+v.glass||250)),study:+v.study||240}}
   else if(k==='kaza'){
@@ -1010,7 +1211,7 @@ document.addEventListener('submit',function(ev){
     else{kzMsg='';var wOn=v.witr==='1';S.kaza={fajr:days,dhuhr:days,asr:days,maghrib:days,isha:days,witr:wOn?days:0,witrOn:wOn,init:days*(wOn?6:5),days:days}}
   }
   else if(k==='recipe'){
-    var nr={id:v.id||uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,ing:v.ing.trim(),steps:v.steps.trim()};
+    var nr={id:v.id||uid(),n:v.n.trim(),min:Math.round(+v.min)||0,k:Math.round(+v.k)||0,p:Math.round(+v.p)||0,c:Math.round(+v.c)||0,f:Math.round(+v.f)||0,ing:v.ing.trim(),steps:v.steps.trim()};
     if(v.id)S.recipes=S.recipes.map(function(r){return r.id===v.id?nr:r});else S.recipes.unshift(nr);
     rEdit=null;rMsg=v.id?'Gespeichert: '+nr.n:''
   }
@@ -1020,8 +1221,20 @@ document.addEventListener('submit',function(ev){
   else if(k==='import'){bMsg=importText(v.t)}
   else if(k==='body'){S.body={sex:v.sex==='f'?'f':'m',age:Math.round(+v.age)||30,h:Math.round(+v.h)||175,w:Math.round((+v.w||70)*10)/10,act:+v.act||1.55,goal:['cut','hold','bulk'].indexOf(v.goal)>=0?v.goal:'hold'}}
   else if(k==='gymtpl'){var gt=GT[v.t];if(gt&&(!gymToday().ex.length||confirm('Den Plan für '+WD[wd()]+' ersetzen?'))){var gg=gymToday();gg.name=v.t;gg.ex=gt.map(function(x){return {id:uid(),n:x[0],s:x[1],r:x[2],kg:x[3]}})}}
+  else if(k==='qgoal'){S.quranGoal=Math.min(100,Math.max(1,Math.round(+v.g)||5))}
+  else if(k==='zakat'){var zk={};['cash','gold','inv','recv','debt','gp'].forEach(function(n){zk[n]=Math.max(0,+v[n]||0)});S.zakat=zk}
+  else if(k==='food'){var fn=function(x){return Math.max(0,Math.round((+x||0)*10)/10)};S.foods.push({id:uid(),n:v.n.trim(),k:fn(v.k),p:fn(v.p),c:fn(v.c),f:fn(v.f)})}
+  else if(k==='foodmeal'){var fd=S.foods.filter(function(x){return x.id===v.id})[0],fg=+v.g;if(fd&&fg>0){var fr=fg/100;d.meals.push({id:uid(),n:fd.n+' ('+Math.round(fg)+' g)',k:Math.round(fd.k*fr),p:Math.round(fd.p*fr),c:Math.round(fd.c*fr),f:Math.round(fd.f*fr),time:nowHM()})}}
+  else if(k==='supp'){S.supps.push({id:uid(),n:v.n.trim()})}
+  else if(k==='cardio'){if(+v.min>0)d.cardio.push({id:uid(),t:v.t,min:Math.round(+v.min),km:Math.round((+v.km||0)*10)/10})}
+  else if(k==='sleep'){d.sleep={bed:v.bed,wake:v.wake}}
+  else if(k==='habit'){S.habits.push({id:uid(),n:v.n.trim()})}
+  else if(k==='exam'){S.exams.push({id:uid(),n:v.n.trim(),d:v.d,h:Math.max(0,+v.h||0)})}
+  else if(k==='card'){S.cards.push({id:uid(),deck:(v.deck||'').trim(),q:v.q.trim(),a:v.a.trim(),box:1,due:ds(new Date())})}
+  else if(k==='note'){S.notes.unshift({id:uid(),n:(v.n||'').trim(),t:v.t.trim(),d:ds(new Date())})}
+  else if(k==='sem'){S.sem={cr:Math.max(0,Math.round(+v.cr)||0),grade:Math.min(5,Math.max(0,+v.grade||0))}}
   else if(k==='apikey'){S.apiKey=v.key.trim()}
-  else if(k==='scanmeal'){var sm={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,time:nowHM()};d.meals.push(sm);S.recent=[{n:sm.n,k:sm.k,p:sm.p}].concat(S.recent.filter(function(r){return r.n!==sm.n})).slice(0,6);scan=null}
+  else if(k==='scanmeal'){var sm={id:uid(),n:v.n.trim(),k:+v.k||0,p:+v.p||0,c:+v.c||0,f:+v.f||0,time:nowHM()};d.meals.push(sm);S.recent=[{n:sm.n,k:sm.k,p:sm.p,c:sm.c,f:sm.f}].concat(S.recent.filter(function(r){return r.n!==sm.n})).slice(0,6);scan=null}
   else if(k==='wake'){S.plan.wake=v.wake}
   else if(k==='pmeal'){S.plan.meals.push({id:uid(),n:v.n.trim(),t:v.t})}
   else if(k==='study'){if(+v.m>0)d.study.push({id:uid(),m:Math.round(+v.m),n:(v.n||'').trim()})}
@@ -1031,6 +1244,7 @@ document.addEventListener('submit',function(ev){
   else if(k==='class'){S.classes.push({id:uid(),n:v.n.trim(),d:+v.d,a:v.a,b:v.b,room:(v.room||'').trim()})}
   save();render();
 });
+if(location.search.indexOf('kompakt')>=0)tab='kompakt';
 applyAccent();
 render();
 setInterval(notifTick,20000);notifTick();
