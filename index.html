@@ -481,7 +481,7 @@ var HAD=[
 function hadithOf(k){var p=parse(k),n=Math.floor(Date.UTC(p.getFullYear(),p.getMonth(),p.getDate())/86400000);return HAD[((n%HAD.length)+HAD.length)%HAD.length]}
 function vHeute(){
   var d=day(), g=gymToday(), cl=classesToday(), T=pt(date);
-  var done=PR.filter(function(p){return d.prayers[p[0]]}).length;
+  var done=5;
   var gd=g.ex.filter(function(e){return d.gym[e.id]}).length;
   var open=S.tasks.filter(function(t){return !t.done}).length;
   var h='', nm=mins(nowHM());
@@ -674,24 +674,12 @@ function spark(vals){
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),r=mx-mn||1;
   return '<svg viewBox="0 0 300 60" style="width:100%;height:60px" aria-hidden="true"><polyline points="'+vals.map(function(v,i){return (i/(vals.length-1)*280+10).toFixed(1)+','+(50-(v-mn)/r*40).toFixed(1)}).join(' ')+'" fill="none" stroke="var(--fg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
-function bestStreak(){
-  var ks=Object.keys(S.days).sort(),b=0,c=0,prev=null;
-  ks.forEach(function(k){
-    var d=S.days[k],full=PR.every(function(p){return d.prayers&&d.prayers[p[0]]});
-    if(!full){c=0;prev=null;return}
-    var p=prev?parse(prev):null,cur=parse(k);
-    if(p){p.setDate(p.getDate()+1)}
-    c=(p&&ds(p)===k)?c+1:1;prev=k;b=Math.max(b,c);
-  });
-  return b;
-}
 function badgeList(){
   var tot=totalStudy(),L=lvlOf(tot),ds_=Object.keys(S.days).map(function(k){return S.days[k]}),G=S.goals;
   var gy=ds_.filter(function(d){return d.gym&&Object.keys(d.gym).some(function(i){return d.gym[i]})}).length;
   return [
    ['Erste Lernstunde',tot>=60],['10 Stunden gelernt',tot>=600],['50 Stunden gelernt',tot>=3000],
    ['Level 5',L>=5],['Level 10',L>=10],
-   ['Alle 5 Gebete an einem Tag',bestStreak()>=1],['7 Tage Gebetsserie',bestStreak()>=7],['30 Tage Gebetsserie',bestStreak()>=30],
    ['Wasserziel erreicht',ds_.some(function(d){return d.water>=G.water})],
    ['Proteinziel erreicht',ds_.some(function(d){return sumP(d)>=G.protein})],
    ['Erstes Training',gy>=1],['10 Trainings',gy>=10],
@@ -711,7 +699,6 @@ function vMehr(){
   h+='<section class="card"><h2>'+ic('cal')+'Übersicht</h2><div class="chips">'+[7,30].map(function(n){return '<button class="chip" data-a="range" data-id="'+n+'" style="'+(rangeN===n?'background:var(--fg);color:var(--bg)':'')+'">'+n+' Tage</button>'}).join('')+'</div><p class="hint">Schwarze Balken: Ziel erreicht.</p></section>';
   h+=chartCard('Kalorien','food',keys,sumKcal,G.kcal*0.9,' kcal');
   h+=chartCard('Lernzeit','clock',keys,sumS,G.study,' Min');
-  h+=chartCard('Gebete','mosque',keys,function(x){return PR.filter(function(p){return x.prayers&&x.prayers[p[0]]}).length},5,'/5');
   h+=chartCard('Wasser','drop',keys,function(x){return x.water||0},G.water,' Gl.');
   h+=chartCard('Training','dumbbell',keys,function(x){return x.gym?Object.keys(x.gym).filter(function(i){return x.gym[i]}).length:0},1,' Üb.');
   var W=S.weights.slice().sort(function(a,b){return a.d<b.d?-1:1}),wl=W[W.length-1],wf=W.filter(function(x){return x.d>=keys[0]})[0]||W[0];
@@ -813,10 +800,10 @@ function vQibla(){
 function vGebet(){
   var d=day(), T=pt(date), L=S.loc;
   var custom=!CITIES[L.city];
-  var h='<section class="card"><h2>'+ic('mosque')+'Gebetszeiten <em>'+PR.filter(function(p){return d.prayers[p[0]]}).length+' von 5 gebetet</em></h2>'
+  var h='<section class="card"><h2>'+ic('mosque')+'Gebetszeiten <em>'+esc(L.city)+'</em></h2>'
    +PR.map(function(p){
-     return '<div class="row">'+chk(d.prayers[p[0]],'pray',p[0])+'<div class="t" style="font-weight:600">'+p[1]+'</div><span class="tm" style="font-size:17px;color:var(--fg)">'+T[p[0]]+'</span></div>';
-   }).join('')+'<p class="hint">Güneş '+T.sunrise+' · berechnet für '+esc(L.city)+(streak()?' · Serie: '+streak()+' '+(streak()===1?'Tag':'Tage'):'')+'</p></section>';
+     return '<div class="row"><div class="t" style="font-weight:600">'+p[1]+'</div><span class="tm" style="font-size:17px;color:var(--fg)">'+T[p[0]]+'</span></div>';
+   }).join('')+'<p class="hint">Güneş '+T.sunrise+' · berechnet für '+esc(L.city)+''+'</p></section>';
   var TB=['Sübhanallah','Elhamdülillah','Allahu Ekber'], tn=d.tas%99, tp=Math.floor(tn/33), tc=tn%33;
   h+='<section class="card"><h2>'+ic('mosque')+'Tesbih <em>'+TB[tp]+' · '+(tp+1)+'/3</em></h2><div class="tas">'+tc+'<span style="font-size:24px;color:var(--muted);font-weight:500"> / 33</span></div>'+bar(tc,33)+'<button class="tasb" data-a="tas">'+TB[tp]+'</button><p class="hint">Nach 33 wechselt es automatisch: Sübhanallah, Elhamdülillah, Allahu Ekber. Gesamt heute: '+d.tas+'</p><button class="btn ghost" data-a="tasreset">Zurücksetzen</button></section>';
   h+=vQibla();
